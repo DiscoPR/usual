@@ -3,7 +3,12 @@ import { v } from "convex/values";
 import { api, components, internal } from "./_generated/api";
 import { action, type ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { sourcesForCity } from "./sources";
+import {
+  mergeSources,
+  normalizeSourceUrl,
+  sourcesForCity,
+  type CitySource,
+} from "./sources";
 import {
   AUSTIN_DEMO_PAGES,
   SURF_MISS,
@@ -36,7 +41,12 @@ export const refreshCity = action({
 
     if (!hasKey && austin) {
       await runDemoCrawl(ctx, args.tripId);
-      return { crawled: AUSTIN_DEMO_PAGES.length, skipped: 0, missingKey: false, demo: true };
+      return {
+        crawled: AUSTIN_DEMO_PAGES.length,
+        skipped: 0,
+        missingKey: false,
+        demo: true,
+      };
     }
 
     if (!hasKey) {
@@ -50,13 +60,25 @@ export const refreshCity = action({
       return { crawled: 0, skipped: 0, missingKey: true, demo: false };
     }
 
-    const sources = sourcesForCity(trip.city);
+    await ctx.runMutation(internal.trips.setCrawlState, {
+      tripId: args.tripId,
+      crawlStatus: "crawling",
+      status: "crawling",
+      crawlError: null,
+      matchNote: `Searching public lists for ${trip.city}…`,
+    });
+    await ctx.runMutation(internal.crawls.clearTripExtract, {
+      tripId: args.tripId,
+    });
+
+    const discovered = await discoverListPages(ctx, trip.city);
+    const sources = mergeSources(discovered, sourcesForCity(trip.city));
     if (sources.length === 0) {
       await ctx.runMutation(internal.trips.setCrawlState, {
         tripId: args.tripId,
         crawlStatus: "failed",
         status: "draft",
-        crawlError: `No verified public sources on file for ${trip.city}. Austin and Lisbon are wired in this build.`,
+        crawlError: `No public lists found for ${trip.city}`,
       });
       return { crawled: 0, skipped: 0, missingKey: false, demo: false };
     }
@@ -66,66 +88,9 @@ export const refreshCity = action({
       crawlStatus: "crawling",
       status: "crawling",
       crawlError: null,
+      matchNote: `Crawling ${sources.length} public list page(s) for ${trip.city}.`,
     });
-    await ctx.runMutation(internal.crawls.clearTripExtract, {
-      tripId: args.tripId,
-    });
-
-    let crawled = 0;
-    let skipped = 0;
-
-    for (const source of sources) {
-      try {
-        const page = await firecrawl.scrape(ctx, source.url, {
-          formats: ["markdown"],
-          onlyMainContent: true,
-        });
-        const markdown = page.markdown?.trim() ?? "";
-        if (markdown.length === 0) {
-          skipped += 1;
-          await ctx.runMutation(internal.crawls.addPage, {
-            tripId: args.tripId,
-            url: source.url,
-            label: source.label,
-            status: "skipped",
-            markdown: null,
-            skipReason: "Empty page, skipped.",
-          });
-          continue;
-        }
-        const pageId = await ctx.runMutation(internal.crawls.addPage, {
-          tripId: args.tripId,
-          url: source.url,
-          label: source.label,
-          status: "ok",
-          markdown: markdown.slice(0, 12_000),
-          skipReason: null,
-        });
-        crawled += 1;
-        await ctx.runMutation(internal.trips.setCrawlState, {
-          tripId: args.tripId,
-          crawlStatus: "crawling",
-          status: "matching",
-          crawlError: null,
-        });
-        await ctx.runAction(internal.match.fromPage, { pageId });
-      } catch (error) {
-        skipped += 1;
-        const message =
-          error instanceof Error ? error.message : "Crawl failed.";
-        const skipReason = /404|not found/i.test(message)
-          ? "URL 404, skipped."
-          : message.slice(0, 180);
-        await ctx.runMutation(internal.crawls.addPage, {
-          tripId: args.tripId,
-          url: source.url,
-          label: source.label,
-          status: "skipped",
-          markdown: null,
-          skipReason,
-        });
-      }
-    }
+    const { crawled, skipped } = await scrapeSources(ctx, args.tripId, sources);
 
     if (crawled === 0) {
       await ctx.runMutation(internal.trips.setCrawlState, {
@@ -135,22 +100,6 @@ export const refreshCity = action({
         crawlError: "Every source was skipped or failed. No fake success.",
       });
       return { crawled, skipped, missingKey: false, demo: false };
-    }
-
-    if (austin) {
-      await ctx.runMutation(internal.crawls.upsertMatch, {
-        tripId: args.tripId,
-        name: SURF_MISS_CARD.name,
-        neighborhood: SURF_MISS_CARD.neighborhood,
-        homePlaceName: SURF_MISS_CARD.homePlaceName,
-        score: 0,
-        whyLine: SURF_MISS,
-        vibeTag: SURF_MISS_CARD.vibeTag,
-        quote: SURF_MISS,
-        source: "demo",
-        sourceUrl: null,
-        isMiss: true,
-      });
     }
 
     await ctx.runMutation(internal.trips.setCrawlState, {
@@ -165,6 +114,157 @@ export const refreshCity = action({
     return { crawled, skipped, missingKey: false, demo: false };
   },
 });
+
+async function scrapeSources(
+  ctx: ActionCtx,
+  tripId: Id<"trips">,
+  sources: CitySource[],
+): Promise<{ crawled: number; skipped: number }> {
+  let crawled = 0;
+  let skipped = 0;
+
+  for (const source of sources) {
+    try {
+      const page = await firecrawl.scrape(ctx, source.url, {
+        formats: ["markdown"],
+        onlyMainContent: true,
+      });
+      const markdown = page.markdown?.trim() ?? "";
+      if (markdown.length === 0) {
+        skipped += 1;
+        await ctx.runMutation(internal.crawls.addPage, {
+          tripId,
+          url: source.url,
+          label: source.label,
+          status: "skipped",
+          markdown: null,
+          skipReason: "Empty page, skipped.",
+        });
+        continue;
+      }
+      const pageId = await ctx.runMutation(internal.crawls.addPage, {
+        tripId,
+        url: source.url,
+        label: source.label,
+        status: "ok",
+        markdown: markdown.slice(0, 12_000),
+        skipReason: null,
+      });
+      crawled += 1;
+      await ctx.runMutation(internal.trips.setCrawlState, {
+        tripId,
+        crawlStatus: "crawling",
+        status: "matching",
+        crawlError: null,
+      });
+      await ctx.runAction(internal.match.fromPage, { pageId });
+    } catch (error) {
+      skipped += 1;
+      const message = error instanceof Error ? error.message : "Crawl failed.";
+      const skipReason = /404|not found/i.test(message)
+        ? "URL 404, skipped."
+        : message.slice(0, 180);
+      await ctx.runMutation(internal.crawls.addPage, {
+        tripId,
+        url: source.url,
+        label: source.label,
+        status: "skipped",
+        markdown: null,
+        skipReason,
+      });
+    }
+  }
+
+  return { crawled, skipped };
+}
+
+async function discoverListPages(
+  ctx: ActionCtx,
+  city: string,
+): Promise<CitySource[]> {
+  const queries = [
+    `${city} Eater map restaurants bars coffee`,
+    `${city} Time Out restaurants bars coffee`,
+    `${city} visitor bureau official dining restaurants`,
+    `${city} best restaurants bars coffee local list`,
+  ];
+  const found: CitySource[] = [];
+  const seen = new Set<string>();
+
+  for (const query of queries) {
+    if (found.length >= 5) break;
+    try {
+      const result = await firecrawl.search(ctx, query, {
+        limit: 5,
+        ignoreInvalidURLs: true,
+        excludeDomains: [
+          "google.com",
+          "maps.google.com",
+          "googleapis.com",
+          "goo.gl",
+        ],
+      });
+      for (const row of result.web ?? []) {
+        const url = pickSearchUrl(row);
+        if (!isAllowedListUrl(url)) continue;
+        const clean = normalizeSourceUrl(url);
+        if (clean.length === 0 || seen.has(clean)) continue;
+        seen.add(clean);
+        const title =
+          typeof row.title === "string" && row.title.trim().length > 0
+            ? row.title.trim().slice(0, 80)
+            : labelFromUrl(clean);
+        found.push({ url: clean, label: title });
+        if (found.length >= 5) break;
+      }
+    } catch {
+      // Try the next query. Empty search is not an invented list.
+    }
+  }
+
+  return found
+    .sort((a, b) => preferList(a.url) - preferList(b.url))
+    .slice(0, 5);
+}
+
+function pickSearchUrl(row: { url?: unknown; [key: string]: unknown }): string {
+  if (typeof row.url === "string") return row.url.trim();
+  const metadata = row.metadata;
+  if (metadata && typeof metadata === "object") {
+    const sourceURL = (metadata as { sourceURL?: unknown }).sourceURL;
+    if (typeof sourceURL === "string") return sourceURL.trim();
+  }
+  return "";
+}
+
+function isAllowedListUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  const lower = url.toLowerCase();
+  if (
+    lower.includes("google.com/maps") ||
+    lower.includes("maps.google") ||
+    lower.includes("goo.gl/maps")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function preferList(url: string): number {
+  const lower = url.toLowerCase();
+  if (lower.includes("eater.com")) return 0;
+  if (lower.includes("timeout.com")) return 1;
+  if (lower.includes("visit") || lower.includes("tourism")) return 2;
+  return 3;
+}
+
+function labelFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 60);
+  }
+}
 
 async function runDemoCrawl(ctx: ActionCtx, tripId: Id<"trips">) {
   await ctx.runMutation(internal.trips.setCrawlState, {

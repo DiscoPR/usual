@@ -11,9 +11,9 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const create = useMutation(api.trips.create);
   const simulate = useMutation(api.mail.simulateInbound);
   const navigate = useNavigate();
-  const [city, setCity] = useState("Austin");
+  const [city, setCity] = useState("Hoboken, nj");
   const [dateLabel, setDateLabel] = useState("this weekend");
-  const [inbound, setInbound] = useState("Austin this weekend");
+  const [inbound, setInbound] = useState("Hoboken, nj this weekend");
 
   if (trips === undefined) {
     return <p className="text-muted">Loading trips…</p>;
@@ -37,8 +37,9 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
       <div>
         <h1 className="font-serif text-2xl">Trips</h1>
         <p className="mt-1 text-muted">
-          Open the Austin mail, then watch matches land as each list page is
-          scored. Category has to overlap a home usual. Score hides below 7.
+          Type any town. Usual searches public dining lists for that city,
+          then scores them against your usuals. Hide below 7. Never invents a
+          venue.
         </p>
       </div>
 
@@ -68,11 +69,12 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
       <form onSubmit={(event) => void onCreate(event)} className="space-y-3">
         <h2 className="font-serif text-xl">New trip</h2>
         <label className="block">
-          <span className="mb-1 block text-sm text-muted">City</span>
+          <span className="mb-1 block text-sm text-muted">Town</span>
           <input
             className="w-full border border-line bg-white px-3 py-2"
             value={city}
             onChange={(event) => setCity(event.target.value)}
+            placeholder="Hoboken, nj"
           />
         </label>
         <label className="block">
@@ -105,7 +107,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
           className="w-full border border-line bg-white px-3 py-2"
           value={inbound}
           onChange={(event) => setInbound(event.target.value)}
-          placeholder="Lisbon in October"
+          placeholder="Hoboken, nj this weekend"
         />
         <button
           type="button"

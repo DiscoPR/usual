@@ -5,7 +5,6 @@ import { convexGateway } from "@convex-dev/ai-sdk-provider";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { internalAction, type ActionCtx } from "./_generated/server";
-import { AUSTIN_MATCH_ORDER } from "./seedData";
 import {
   buildWhyLine,
   categoryOverlap,
@@ -76,16 +75,11 @@ export const fromPage = internalAction({
     }
 
     const scored: ScoreResult = await scoreAgainstAnchors(remaining, anchors);
-    const austin = trip.city.trim().toLowerCase().includes("austin");
     let kept = 0;
     for (const row of scored.rows) {
-      const name = austin
-        ? austinAllowedName(row.candidate.name)
-        : row.candidate.name;
-      if (austin && name === null) continue;
       const wrote = await ctx.runMutation(internal.crawls.upsertMatch, {
         tripId: page.tripId,
-        name: name ?? row.candidate.name,
+        name: row.candidate.name,
         neighborhood: row.candidate.neighborhood,
         homePlaceName: row.anchor.name,
         score: row.score,
@@ -104,12 +98,6 @@ export const fromPage = internalAction({
     };
   },
 });
-
-function austinAllowedName(name: string): string | null {
-  if (name === "Epoch Coffee") return "Epoch Coffee, North Loop";
-  if ((AUSTIN_MATCH_ORDER as readonly string[]).includes(name)) return name;
-  return null;
-}
 
 async function scoreAgainstAnchors(
   candidates: Candidate[],

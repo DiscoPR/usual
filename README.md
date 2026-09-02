@@ -71,7 +71,7 @@ AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 ## Matching method
 
 1. **Taste card** — name, city, optional URL, one-line why. Why (or a Firecrawl of the URL) fills `categories[]`, `vibeTags[]`, `priceBand`. The profile is the rollup of 5–12 anchors.
-2. **City crawl** — Firecrawl verified public list pages. Candidates are extracted from markdown only, each with a source URL and a quoted snippet. Names not in the crawl text are dropped.
+2. **City crawl** — Firecrawl search for public dining/bar/coffee lists in the typed town. Only URLs the search returned are scraped (optional hardcoded boosts merge and dedupe). Candidates come from markdown only, each with a source URL and a quoted snippet. Names not in the crawl text are dropped. If search and boosts are empty: `No public lists found for {city}`.
 3. **Match** — hard filter: candidate category must overlap an anchor category. A Convex action scores each remaining pair 1–10 (OpenAI, or a rule score if no model). Quote must come from the snippet. Why line: `you liked {anchor} because {tag} → {candidate} because {tag} — "{quote}"`. Best score per candidate. Hide below 7. Results upsert as each page finishes so the board moves live. Invented venues are never shown. An anchor with no grounded candidate is an explicit miss.
 
 ## Demo path (under 3 minutes)
@@ -81,21 +81,11 @@ AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 3. Matches land one page at a time: 24 Diner, Epoch Coffee, Continental Club, Habana Austin, then the Island Water Sports miss.
 4. **Approve & send** — subject `Your usual, in Austin`. Four places + the miss. No Sixth Street.
 
-## Public sources (verified)
+## Public sources
 
-Austin (demo / live crawl):
+Every town uses Firecrawl search first. Optional boost lists (Austin, Lisbon, Hoboken / Jersey City) merge in if present. They never gate crawl. A 404 or empty page is skipped. If nothing is found: `No public lists found for {city}`. No invented venues.
 
-- https://austin.eater.com/maps/best-24-hour-restaurants-austin-cafes-diners-all-hours-24-7
-- https://austin.eater.com/maps/south-congress-austin-best-restaurants-bars-dining-guide-where-to-eat-travis-heights-bouldin-creek
-- https://www.habanaaustin.com/
-- https://epochcoffee.com/
-
-Lisbon:
-
-- https://www.timeout.com/lisbon/restaurants
-- https://www.visitlisboa.com/en
-
-A 404 is skipped. No invented dead URLs. The demo seed does not invent extra Austin venues.
+Austin labeled demo (local, no Firecrawl key only) still shows 24 Diner, Continental Club, Habana Austin, Epoch Coffee, and the Island Water Sports miss.
 
 ## Out of scope
 

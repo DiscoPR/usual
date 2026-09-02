@@ -33,11 +33,52 @@ const LISBON: CitySource[] = [
   },
 ];
 
+const HOBOKEN: CitySource[] = [
+  {
+    url: "https://www.thejillbiggsgroup.com/blog/best-restaurants-hoboken-nj-2025-2026",
+    label: "Jill Biggs — best restaurants Hoboken",
+  },
+  {
+    url: "https://www.visithudson.org/restaurants/hoboken/",
+    label: "Visit Hudson — Hoboken restaurants",
+  },
+  {
+    url: "https://www.visithudson.org/restaurants/",
+    label: "Visit Hudson restaurants",
+  },
+  {
+    url: "https://ny.eater.com/maps/best-jersey-city-restaurants",
+    label: "Eater — best Jersey City restaurants",
+  },
+];
+
 export function sourcesForCity(city: string): CitySource[] {
   const key = city.trim().toLowerCase();
   if (key.includes("austin")) return AUSTIN;
   if (key.includes("lisbon") || key.includes("lisboa")) return LISBON;
+  if (key.includes("hoboken") || key.includes("jersey city")) return HOBOKEN;
   return [];
+}
+
+export function mergeSources(
+  primary: CitySource[],
+  boost: CitySource[],
+): CitySource[] {
+  const seen = new Set<string>();
+  const merged: CitySource[] = [];
+  for (const source of [...primary, ...boost]) {
+    const url = normalizeSourceUrl(source.url);
+    if (url.length === 0 || seen.has(url)) continue;
+    seen.add(url);
+    merged.push({ url, label: source.label });
+  }
+  return merged;
+}
+
+export function normalizeSourceUrl(url: string): string {
+  const trimmed = url.trim().split("#")[0] ?? "";
+  if (!/^https?:\/\//i.test(trimmed)) return "";
+  return trimmed.replace(/\/$/, "") || trimmed;
 }
 
 export function parseTripRequest(text: string): {

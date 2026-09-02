@@ -235,6 +235,9 @@ function inferNeighborhood(body: string): string {
     "North Loop",
     "South Congress",
     "Airport Blvd",
+    "Hoboken",
+    "Jersey City",
+    "Weehawken",
     "Barrington Oaks",
   ];
   for (const name of known) {

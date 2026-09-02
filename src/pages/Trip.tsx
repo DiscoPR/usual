@@ -140,7 +140,7 @@ export function Trip() {
             : "Crawl city lists"}
         </button>
         <p className="text-xs uppercase tracking-wide text-muted">
-          Firecrawl · pages upsert as they finish
+          Firecrawl search · scrape returned URLs · pages land live
         </p>
         <button
           type="button"
@@ -164,7 +164,7 @@ export function Trip() {
           <p className="mt-2 border border-line px-4 py-5 text-muted">
             {crawling
               ? "Waiting on the first page…"
-              : "No matches yet. Crawl the city lists."}
+              : "No matches yet. Search public lists for this town."}
           </p>
         ) : (
           <ol className="mt-3 space-y-3">
