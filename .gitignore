@@ -1,0 +1,22 @@
+logs
+*.log
+npm-debug.log*
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+.convex
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Agent-specific skill copies; canonical skills live in .agents/skills
+agent/
+.claude/

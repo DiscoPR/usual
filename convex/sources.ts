@@ -1,0 +1,78 @@
+export type CitySource = {
+  url: string;
+  label: string;
+};
+
+const AUSTIN: CitySource[] = [
+  {
+    url: "https://austin.eater.com/maps/best-restaurants-austin-eater-38",
+    label: "Eater Austin 38",
+  },
+  {
+    url: "https://www.austinchronicle.com/food/",
+    label: "Austin Chronicle Food",
+  },
+  {
+    url: "https://www.austintexas.org/food-and-drink/",
+    label: "Visit Austin dining",
+  },
+];
+
+const LISBON: CitySource[] = [
+  {
+    url: "https://www.timeout.com/lisbon/restaurants",
+    label: "Time Out Lisbon restaurants",
+  },
+  {
+    url: "https://www.visitlisboa.com/en",
+    label: "Visit Lisboa",
+  },
+];
+
+export function sourcesForCity(city: string): CitySource[] {
+  const key = city.trim().toLowerCase();
+  if (key.includes("austin")) return AUSTIN;
+  if (key.includes("lisbon") || key.includes("lisboa")) return LISBON;
+  return [];
+}
+
+export function parseTripRequest(text: string): {
+  city: string;
+  dateLabel: string;
+} | null {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length === 0) return null;
+
+  const weekend = cleaned.match(
+    /^(.+?)\s+(this weekend|next weekend|this week)$/i,
+  );
+  if (weekend?.[1]) {
+    return {
+      city: titleCase(weekend[1]),
+      dateLabel: weekend[2].toLowerCase(),
+    };
+  }
+
+  const inMonth = cleaned.match(/^(.+?)\s+in\s+([A-Za-z]+)$/i);
+  if (inMonth?.[1] && inMonth[2]) {
+    return {
+      city: titleCase(inMonth[1]),
+      dateLabel: titleCase(inMonth[2]),
+    };
+  }
+
+  const dash = cleaned.match(/^(.+?)\s*[—–-]\s*(.+)$/);
+  if (dash?.[1] && dash[2]) {
+    return { city: titleCase(dash[1]), dateLabel: dash[2].trim() };
+  }
+
+  return { city: titleCase(cleaned), dateLabel: "whenever you land" };
+}
+
+function titleCase(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
