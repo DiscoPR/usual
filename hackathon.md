@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:54:20Z
+- **Last updated:** 2026-09-02T01:56:33Z
 
 ## Log
 
@@ -36,3 +36,6 @@ Deployed Usual into the existing Hackathon project on team Vital 5 (development 
 
 ### 2026-09-02 - bf913d3
 Any town is a first-class crawl. `refreshCity` Firecrawl-searches dining/bar/coffee list pages for the typed city, scrapes only returned URLs, then merges optional Austin / Lisbon / Hoboken boosts. `sourcesForCity` returning empty is not a failure; the only empty-state copy is `No public lists found for {city}`. Live matching no longer allowlists four Austin names (`convex/crawl.ts`, `convex/sources.ts`, `convex/match.ts`). Cloud redeploy did not run: `CONVEX_DEPLOY_KEY` is not in this session, so https://elated-perch-355.convex.site still serves the previous build. Did not invent a key.
+
+### 2026-09-02 - working tree
+Redeployed the any-town build to the existing Hackathon dev deployment. Backend and static frontend are live at https://elated-perch-355.convex.site. The served JS includes “Type any town” and “Hoboken, nj”; it does not include “Austin and Lisbon are wired in this build.” Did not print or commit secrets.
