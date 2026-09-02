@@ -3,16 +3,16 @@
 - **Project:** Usual
 - **Event:** Convex All Gas Hackathon (OpenAI, Firecrawl, AgentMail)
 - **What it does:** Finds your usual spots in a city you are about to visit — taste list, public-list crawl, grounded matches, owner-approved email.
-- **Live app:** not deployed
+- **Live app:** https://elated-perch-355.convex.site
 - **Repo:** none
 - **Frontend:** Convex static hosting
-- **Convex deployment:** not deployed
+- **Convex deployment:** https://elated-perch-355.convex.cloud
 - **Components:** @convex-dev/static-hosting
 - **Convex features:** schema, tables, indexes, queries, mutations, actions, HTTP actions, realtime queries
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:13:37Z
+- **Last updated:** 2026-09-02T01:17:07Z
 
 ## Log
 
@@ -30,3 +30,6 @@ Finished the contest path compile. `fromPage` now annotates the handler, page ma
 
 ### 2026-09-02 - beefc96
 Checked for Convex cloud credentials so Usual could go into the existing project named Hackathon. This environment has no login session and no `CONVEX_DEPLOY_KEY`, so nothing was deployed and no new project was created. Live app and Convex deployment stay `not deployed`. Did not read or log `FIRECRAWL_API_KEY`, `AGENTMAIL_API_KEY`, or `OPENAI_API_KEY`. Local `tsc` still passes.
+
+### 2026-09-02 - working tree
+Deployed Usual into the existing Hackathon project on team Vital 5 (development deployment elated-perch-355). Backend functions and the static frontend are live at https://elated-perch-355.convex.site; Convex cloud is https://elated-perch-355.convex.cloud. A GET of the site returns title “Usual — your usual, in this city” with the built JS/CSS, not an empty Convex page. Did not create a new project. Did not print or commit secrets.

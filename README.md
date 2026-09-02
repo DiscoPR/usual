@@ -64,9 +64,9 @@ npx convex login
 npm run deploy
 ```
 
-`npm run deploy` runs `@convex-dev/static-hosting deploy` (build + Convex push + upload `dist/`, SPA routing on). The live URL is `https://<deployment>.convex.site`.
+`npm run deploy` runs `@convex-dev/static-hosting deploy` (build + Convex push + upload `dist/`, SPA routing on). Live app: https://elated-perch-355.convex.site
 
-AgentMail webhook path: `https://<deployment>.convex.site/agentmail/webhook`
+AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 
 ## Matching method
 
