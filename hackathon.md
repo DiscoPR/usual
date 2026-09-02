@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:11:31Z
+- **Last updated:** 2026-09-02T01:13:37Z
 
 ## Log
 
@@ -27,3 +27,6 @@ Locked the contest click-through to one seed. Taste is Lester’s Diner, Padrino
 
 ### 2026-09-02 - 5bfb4f4
 Finished the contest path compile. `fromPage` now annotates the handler, page markdown, extracted candidates, and score result so the earlier implicit-any loop is gone (`convex/match.ts`). Live Austin matching will only upsert the four allowlisted names. `tsc` passes for Convex and the Vite app. No `*.convex.site` URL — still not deployed, no Convex login here. `FIRECRAWL_API_KEY` is not a live `fc-` key on this local backend; Austin uses the labeled demo crawl until a real deployment sets one. AgentMail send stays gated: nothing goes out unless the owner taps Approve.
+
+### 2026-09-02 - working tree
+Checked for Convex cloud credentials so Usual could go into the existing project named Hackathon. This environment has no login session and no `CONVEX_DEPLOY_KEY`, so nothing was deployed and no new project was created. Live app and Convex deployment stay `not deployed`. Did not read or log `FIRECRAWL_API_KEY`, `AGENTMAIL_API_KEY`, or `OPENAI_API_KEY`. Local `tsc` still passes.

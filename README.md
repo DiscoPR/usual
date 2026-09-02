@@ -57,6 +57,8 @@ Send never auto-fires. Without AgentMail, **Approve & send** writes an in-app ou
 
 ## Deploy to convex.site
 
+Deploy into the existing Convex cloud project named **Hackathon**. Do not create a differently named project.
+
 ```bash
 npx convex login
 npm run deploy
