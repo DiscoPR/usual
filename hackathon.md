@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T00:40:00Z
+- **Last updated:** 2026-09-02T01:07:11Z
 
 ## Log
 
@@ -21,3 +21,6 @@ Started Usual as a new Convex app in this repo. Night Desk and Stamped were reje
 
 ### 2026-09-02 - 67d16ea
 Locked the match pipeline. Taste cards now store categories, vibe tags, price band, and optional URL; the profile is a rollup of those anchors. City crawls extract candidates only from markdown with a source URL and quote, then a Convex action scores each category-overlapping pair 1–10 and upserts matches as each page finishes. Why line is `you liked {anchor} because {tag} → {candidate} because {tag} — "{quote}"`. Scores below 7 are hidden. Demo Austin matches use this same shape and are labeled demo (`convex/taxonomy.ts`, `convex/match.ts`, `convex/crawl.ts`, `convex/schema.ts`).
+
+### 2026-09-02 - 4a91235
+Locked the contest click-through to one seed. Taste is Lester’s Diner, Padrino’s Cuban Cuisine, Elbo Room, BREW Urban Cafe, and Island Water Sports. The inbox already holds “Austin this weekend”; opening it creates the Austin trip live. Demo crawl upserts 24 Diner, Continental Club, Habana Austin, and Epoch Coffee as each labeled page finishes, then an explicit miss: no grounded surf shop, nothing invented. Approve & send writes subject `Your usual, in Austin` with those four places plus the miss and no Sixth Street. Without AgentMail the outbound stays in-app (`convex/seedData.ts`, `convex/crawl.ts`, `convex/mail.ts`, `src/pages/Trip.tsx`). Convex features: mutations, actions, indexes, realtime queries.
