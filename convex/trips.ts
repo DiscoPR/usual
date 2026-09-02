@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { crawlRunStatus, tripOrigin, tripStatus } from "./schema";
 import { parseTripRequest } from "./sources";
+import { AUSTIN_MATCH_ORDER } from "./seedData";
 
 const tripSummary = v.object({
   _id: v.id("trips"),
@@ -140,23 +141,48 @@ export const draftFromMatches = mutation({
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
       .take(12);
-    const visible = matches
-      .filter((match) => (match.score ?? 0) >= 7 && match.whyLine)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    const lines = visible.map(
-      (match) => `• ${match.name} (${match.score}) — ${match.whyLine}`,
+    const hits = matches
+      .filter(
+        (match) =>
+          !match.isMiss && (match.score ?? 0) >= 7 && match.whyLine,
+      )
+      .sort((a, b) => {
+        const ai = AUSTIN_MATCH_ORDER.indexOf(
+          a.name as (typeof AUSTIN_MATCH_ORDER)[number],
+        );
+        const bi = AUSTIN_MATCH_ORDER.indexOf(
+          b.name as (typeof AUSTIN_MATCH_ORDER)[number],
+        );
+        if (ai !== -1 || bi !== -1) {
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        }
+        return (b.score ?? 0) - (a.score ?? 0);
+      });
+    const misses = matches.filter((match) => match.isMiss);
+    const austin = trip.city.trim().toLowerCase() === "austin";
+    const subject = austin
+      ? "Your usual, in Austin"
+      : `Your usual, in ${trip.city}`;
+    const lines = hits.map((match) => {
+      const place =
+        match.neighborhood && match.neighborhood !== "unknown"
+          ? `${match.name} (${match.neighborhood})`
+          : match.name;
+      return `• ${place} — ${match.whyLine}`;
+    });
+    const missLines = misses.map(
+      (match) => `${match.homePlaceName} — ${match.whyLine}`,
     );
     const body = [
-      `${trip.city}, ${trip.dateLabel}.`,
-      "",
-      trip.matchNote ?? "Your usual, in this city.",
+      subject,
       "",
       ...lines,
+      ...(missLines.length > 0 ? ["", ...missLines] : []),
       "",
-      "Usual does not send this until you tap Send.",
+      austin ? "No Sixth Street." : "Usual does not send this until you approve.",
     ].join("\n");
     await ctx.db.patch(args.tripId, {
-      emailSubject: `Your usual, in ${trip.city} — ${trip.dateLabel}`,
+      emailSubject: subject,
       emailDraft: body,
     });
     return null;

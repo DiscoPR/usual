@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { InboxCard } from "../components/InboxCard";
 
 export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const trips = useQuery(api.trips.list, { profileId });
@@ -30,18 +31,20 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
+      <InboxCard />
+
       <div>
         <h1 className="font-serif text-2xl">Trips</h1>
         <p className="mt-1 text-muted">
-          Open Austin and watch matches land as each list page is scored.
-          Category has to overlap a home usual. Score hides below 7.
+          Open the Austin mail, then watch matches land as each list page is
+          scored. Category has to overlap a home usual. Score hides below 7.
         </p>
       </div>
 
       {trips.length === 0 ? (
         <p className="border border-line bg-white/50 px-4 py-5 text-muted">
-          No trips yet. Seed should have put Austin here.
+          No trips yet. Open the inbox on Taste.
         </p>
       ) : (
         <ul className="space-y-3">

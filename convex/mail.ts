@@ -14,6 +14,92 @@ const agentmail = new AgentMail(components.agentmail, {
   onMessageReceived: internal.mail.onMessageReceived,
 });
 
+export const listInbox = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("messages"),
+      direction: messageDirection,
+      status: messageStatus,
+      subject: v.string(),
+      body: v.string(),
+      fromLabel: v.string(),
+      tripId: v.union(v.id("trips"), v.null()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const pending = await ctx.db
+      .query("messages")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(10);
+    return pending
+      .filter((row) => row.direction === "inbound")
+      .map((row) => ({
+        _id: row._id,
+        direction: row.direction,
+        status: row.status,
+        subject: row.subject,
+        body: row.body,
+        fromLabel: row.fromLabel,
+        tripId: row.tripId,
+      }));
+  },
+});
+
+export const acceptInbound = mutation({
+  args: { messageId: v.id("messages") },
+  returns: v.id("trips"),
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found.");
+    if (message.tripId) return message.tripId;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    if (!profile) throw new Error("No profile.");
+
+    const parsed =
+      parseTripRequest(message.body) ?? parseTripRequest(message.subject);
+    const city = parsed?.city ?? "Austin";
+    const dateLabel = parsed?.dateLabel ?? "this weekend";
+
+    const existing = await ctx.db
+      .query("trips")
+      .withIndex("by_profile_city", (q) =>
+        q.eq("profileId", profile._id).eq("city", city),
+      )
+      .take(5);
+    const open = existing.find((trip) => trip.origin === "email");
+    if (open) {
+      await ctx.db.patch(message._id, {
+        tripId: open._id,
+        status: "accepted",
+      });
+      return open._id;
+    }
+
+    const tripId = await ctx.db.insert("trips", {
+      profileId: profile._id,
+      city,
+      dateLabel,
+      status: "draft",
+      origin: "email",
+      crawlStatus: "idle",
+      crawlError: null,
+      emailDraft: null,
+      emailSubject: null,
+      matchNote: null,
+    });
+    await ctx.db.patch(message._id, {
+      tripId,
+      status: "accepted",
+    });
+    return tripId;
+  },
+});
+
 export const listForTrip = query({
   args: { tripId: v.id("trips") },
   returns: v.array(
@@ -124,7 +210,7 @@ export const onMessageReceived = internalMutation({
 export const sendTrip = mutation({
   args: {
     tripId: v.id("trips"),
-    to: v.string(),
+    to: v.optional(v.string()),
   },
   returns: v.object({
     sent: v.boolean(),
@@ -138,24 +224,33 @@ export const sendTrip = mutation({
     }
     const inboxId = process.env.AGENTMAIL_INBOX_ID;
     const apiKey = process.env.AGENTMAIL_API_KEY;
+    const subject = trip.emailSubject ?? `Your usual, in ${trip.city}`;
     if (!inboxId || !apiKey) {
       await ctx.db.insert("messages", {
         tripId: args.tripId,
         direction: "outbound",
-        status: "blocked",
-        subject: trip.emailSubject ?? `Your usual, in ${trip.city}`,
+        status: "simulated",
+        subject,
         body: trip.emailDraft,
-        fromLabel: "not sent",
+        fromLabel: "demo send",
       });
+      await ctx.db.patch(args.tripId, { status: "sent" });
+      return {
+        sent: true,
+        reason:
+          "Demo send. AgentMail is not connected, so this stayed in-app. Nothing left the machine.",
+      };
+    }
+    const to = args.to?.trim();
+    if (!to) {
       return {
         sent: false,
-        reason:
-          "Connect AgentMail (AGENTMAIL_API_KEY and AGENTMAIL_INBOX_ID). Send is gated. Nothing went out.",
+        reason: "Add a recipient before sending through AgentMail.",
       };
     }
     await agentmail.sendMessage(ctx, inboxId, {
-      to: args.to,
-      subject: trip.emailSubject ?? `Your usual, in ${trip.city}`,
+      to,
+      subject: subject,
       text: trip.emailDraft,
       labels: ["usual-trip"],
     });

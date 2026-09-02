@@ -3,6 +3,7 @@ export const CATEGORIES = [
   "coffee",
   "bar",
   "restaurant",
+  "cuban",
   "shop",
   "bakery",
   "taco",
@@ -13,12 +14,20 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 const CATEGORY_WORDS: Record<Category, string[]> = {
-  diner: ["diner", "counter breakfast", "breakfast counter", "all-night", "late eggs"],
+  diner: [
+    "diner",
+    "counter breakfast",
+    "breakfast counter",
+    "all-night",
+    "around the clock",
+    "24/7",
+    "24 hour",
+    "24-hour",
+  ],
   coffee: ["coffee", "cafe", "café", "cortadito", "espresso", "latte"],
   bar: ["bar", "pub", "dive", "pints", "beer", "cocktails", "live music"],
   restaurant: [
     "restaurant",
-    "cuban",
     "plates",
     "supper",
     "dinner",
@@ -26,6 +35,7 @@ const CATEGORY_WORDS: Record<Category, string[]> = {
     "taqueria",
     "kitchen",
   ],
+  cuban: ["cuban", "ropa vieja", "habana", "plantains"],
   shop: ["shop", "surf", "boards", "wax", "retail", "gear"],
   bakery: ["bakery", "pastry", "kolache", "bread"],
   taco: ["taco", "taqueria", "migas", "masa"],
@@ -170,19 +180,23 @@ export function pickQuote(snippet: string, proposed?: string): string | null {
 
 function inferVibeTags(lower: string): string[] {
   const tags: Array<[string, string[]]> = [
-    ["counter", ["counter", "stool", "counter stool"]],
+    ["24/7 booth", ["24/7", "around the clock", "booth", "24 hour"]],
     ["late", ["late", "night", "after hours"]],
-    ["no-fuss", ["no fuss", "no-fuss", "institution", "no polish"]],
-    ["no-hard-sell", ["no hard sell", "nobody pushing", "unhurried"]],
-    ["hang", ["hang", "sit as long", "patio"]],
-    ["cheap", ["cheap", "dive", "pints"]],
-    ["dark", ["dark room", "dark"]],
-    ["live-music", ["live music", "band"]],
-    ["cuban", ["cuban", "plantains", "roast pork"]],
+    ["coffee", ["coffee", "coffee pot"]],
+    ["family Cuban", ["family cuban", "cuban plates", "ropa vieja"]],
+    ["cuban", ["cuban", "plantains", "habana"]],
     ["plates", ["plates", "plate", "sunday"]],
-    ["unhurried", ["nobody rushing", "unhurried", "no rush"]],
-    ["cortadito", ["cortadito", "strong coffee"]],
+    ["dive", ["dive", "dive energy"]],
+    ["live-music", ["live music", "live-music", "band"]],
+    ["not a chain", ["not a chain", "independent coffee"]],
+    ["local", ["local", "two rooms"]],
+    ["surf", ["surf", "boards", "wax"]],
+    ["family", ["family", "since 1978"]],
     ["gear", ["gear", "boards", "wax", "surf"]],
+    ["counter", ["counter", "stool", "counter stool"]],
+    ["no-fuss", ["no fuss", "no-fuss", "institution", "no polish"]],
+    ["cheap", ["cheap", "pints"]],
+    ["unhurried", ["nobody rushing", "unhurried", "no rush"]],
   ];
   return tags
     .filter(([, words]) => words.some((word) => lower.includes(word)))
@@ -219,6 +233,8 @@ function inferNeighborhood(body: string): string {
     "North Campus",
     "Tarrytown",
     "North Loop",
+    "South Congress",
+    "Airport Blvd",
     "Barrington Oaks",
   ];
   for (const name of known) {

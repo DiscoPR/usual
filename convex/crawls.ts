@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { crawlPageStatus, matchSource } from "./schema";
+import { AUSTIN_MATCH_ORDER } from "./seedData";
 
 export const listPages = query({
   args: { tripId: v.id("trips") },
@@ -146,6 +147,7 @@ export const listMatches = query({
       source: matchSource,
       sourceUrl: v.union(v.string(), v.null()),
       grounded: v.boolean(),
+      isMiss: v.boolean(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -153,29 +155,44 @@ export const listMatches = query({
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
       .take(40);
-    return rows
-      .filter(
-        (row) =>
-          (row.source === "crawl" || row.source === "demo") &&
-          (row.score ?? 0) >= 7 &&
-          Boolean(row.whyLine) &&
-          row.grounded,
-      )
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-      .slice(0, 16)
-      .map((row) => ({
-        _id: row._id,
-        name: row.name,
-        neighborhood: row.neighborhood,
-        homePlaceName: row.homePlaceName,
-        score: row.score ?? 0,
-        whyLine: row.whyLine ?? "",
-        vibeTag: row.vibeTag ?? "",
-        quote: row.quote ?? "",
-        source: row.source,
-        sourceUrl: row.sourceUrl,
-        grounded: row.grounded,
-      }));
+    const visible = rows.filter((row) => {
+      if (row.isMiss) return true;
+      return (
+        (row.source === "crawl" || row.source === "demo") &&
+        (row.score ?? 0) >= 7 &&
+        Boolean(row.whyLine) &&
+        row.grounded
+      );
+    });
+    const hits = visible
+      .filter((row) => !row.isMiss)
+      .sort((a, b) => {
+        const ai = AUSTIN_MATCH_ORDER.indexOf(
+          a.name as (typeof AUSTIN_MATCH_ORDER)[number],
+        );
+        const bi = AUSTIN_MATCH_ORDER.indexOf(
+          b.name as (typeof AUSTIN_MATCH_ORDER)[number],
+        );
+        if (ai !== -1 || bi !== -1) {
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        }
+        return (b.score ?? 0) - (a.score ?? 0);
+      });
+    const misses = visible.filter((row) => row.isMiss);
+    return [...hits, ...misses].slice(0, 16).map((row) => ({
+      _id: row._id,
+      name: row.name,
+      neighborhood: row.neighborhood,
+      homePlaceName: row.homePlaceName,
+      score: row.score ?? 0,
+      whyLine: row.whyLine ?? "",
+      vibeTag: row.vibeTag ?? "",
+      quote: row.quote ?? "",
+      source: row.source,
+      sourceUrl: row.sourceUrl,
+      grounded: row.grounded,
+      isMiss: row.isMiss ?? false,
+    }));
   },
 });
 
@@ -190,11 +207,12 @@ export const upsertMatch = internalMutation({
     vibeTag: v.string(),
     quote: v.string(),
     source: v.union(v.literal("crawl"), v.literal("demo")),
-    sourceUrl: v.string(),
+    sourceUrl: v.union(v.string(), v.null()),
+    isMiss: v.optional(v.boolean()),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    if (args.score < 7) return false;
+    if (!args.isMiss && args.score < 7) return false;
     const existing = await ctx.db
       .query("matches")
       .withIndex("by_trip_name", (q) =>
@@ -212,13 +230,14 @@ export const upsertMatch = internalMutation({
       quote: args.quote,
       source: args.source,
       sourceUrl: args.sourceUrl,
-      grounded: true,
+      grounded: !args.isMiss,
+      isMiss: args.isMiss ?? false,
     };
     if (!existing) {
       await ctx.db.insert("matches", doc);
       return true;
     }
-    if ((existing.score ?? 0) >= args.score) return false;
+    if (!args.isMiss && (existing.score ?? 0) > args.score) return false;
     await ctx.db.patch(existing._id, doc);
     return true;
   },

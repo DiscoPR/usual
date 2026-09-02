@@ -1,64 +1,74 @@
 import { buildWhyLine } from "./taxonomy";
-import type { CitySource } from "./sources";
 
 export const DEMO_SLUG = "usual-demo";
 
+export const INBOUND_SUBJECT = "Austin this weekend";
+export const INBOUND_BODY =
+  "Austin this weekend. Same kind of places I go at home. Diner, Cuban, a real bar, coffee that isn’t a chain. Don’t send me Sixth Street.";
+
+export const OUTBOUND_SUBJECT = "Your usual, in Austin";
+export const SURF_MISS =
+  "No grounded surf shop in this crawl. We didn’t make one up.";
+
+export const EATER_24H =
+  "https://austin.eater.com/maps/best-24-hour-restaurants-austin-cafes-diners-all-hours-24-7";
+export const EATER_SOCO =
+  "https://austin.eater.com/maps/south-congress-austin-best-restaurants-bars-dining-guide-where-to-eat-travis-heights-bouldin-creek";
+export const HABANA_URL = "https://www.habanaaustin.com/";
+export const EPOCH_URL = "https://epochcoffee.com/";
+
 export const DEMO_TASTE = [
   {
-    name: "Lester's Diner",
+    name: "Lester’s Diner",
     city: "Fort Lauderdale",
-    note: "Late eggs, a counter stool, and a waitress who already knows the order.",
+    note: "24/7 booth, cake spinner, they keep the 14oz coffee full",
     url: null as string | null,
     categories: ["diner", "restaurant"],
-    vibeTags: ["counter", "late", "no-fuss"],
+    vibeTags: ["24/7 booth", "late", "coffee"],
     priceBand: "$",
-    descriptors: ["counter", "late", "no-fuss"],
+    descriptors: ["24/7 booth", "late", "coffee"],
   },
   {
-    name: "Quiet Flight Surf Shop",
+    name: "Padrino’s Cuban Cuisine",
     city: "Fort Lauderdale",
-    note: "Wax, boards, and nobody pushing a sale.",
+    note: "family Cuban, ropa vieja, not the Las Olas rum-bar version",
     url: null,
-    categories: ["shop"],
-    vibeTags: ["no-hard-sell", "hang", "gear"],
-    priceBand: null,
-    descriptors: ["no-hard-sell", "hang"],
+    categories: ["restaurant", "cuban"],
+    vibeTags: ["family Cuban", "plates"],
+    priceBand: "$$",
+    descriptors: ["family Cuban", "ropa vieja", "plates"],
   },
   {
-    name: "The Poor House",
-    city: "Fort Lauderdale",
-    note: "Dark room, cheap beer, a band in the corner.",
+    name: "Elbo Room",
+    city: "Fort Lauderdale Beach",
+    note: "corner of Las Olas and A1A, dive, live music",
     url: null,
     categories: ["bar"],
-    vibeTags: ["cheap", "dark", "live-music"],
+    vibeTags: ["dive", "live-music"],
     priceBand: "$",
-    descriptors: ["cheap", "dark", "live-music"],
+    descriptors: ["dive", "live-music", "corner"],
   },
   {
-    name: "Padrino's",
-    city: "Plantation",
-    note: "Cuban roast pork and plantains that taste like a Sunday.",
-    url: null,
-    categories: ["restaurant"],
-    vibeTags: ["cuban", "plates"],
-    priceBand: "$$",
-    descriptors: ["cuban", "plates"],
-  },
-  {
-    name: "Brew Urban Cafe",
+    name: "BREW Urban Cafe",
     city: "Fort Lauderdale",
-    note: "Small counter, strong cortadito, nobody rushing you.",
+    note: "small local coffee, two rooms downtown, not a chain",
     url: null,
     categories: ["coffee"],
-    vibeTags: ["counter", "unhurried", "cortadito"],
+    vibeTags: ["not a chain", "local", "two rooms"],
     priceBand: "$",
-    descriptors: ["counter", "unhurried", "cortadito"],
+    descriptors: ["not a chain", "local", "two rooms"],
+  },
+  {
+    name: "Island Water Sports",
+    city: "Deerfield/Pompano",
+    note: "family surf shop since 1978",
+    url: null,
+    categories: ["shop"],
+    vibeTags: ["surf", "family", "gear"],
+    priceBand: null,
+    descriptors: ["surf", "family", "since 1978"],
   },
 ] as const;
-
-export const EATER_38 =
-  "https://austin.eater.com/maps/best-restaurants-austin-eater-38";
-export const VISIT_AUSTIN = "https://www.austintexas.org/food-and-drink/";
 
 export type DemoMatch = {
   name: string;
@@ -70,80 +80,117 @@ export type DemoMatch = {
   sourceUrl: string;
 };
 
-export const AUSTIN_DEMO_MATCHES: DemoMatch[] = [
+export type DemoPage = {
+  url: string;
+  label: string;
+  markdown: string;
+  matches: DemoMatch[];
+};
+
+export const AUSTIN_DEMO_PAGES: DemoPage[] = [
   {
-    name: "Joe's Bakery & Coffee Shop",
-    neighborhood: "East Austin",
-    homePlaceName: "Lester's Diner",
-    score: 9,
-    vibeTag: "counter",
-    quote: "Counter breakfast, no fuss.",
-    sourceUrl: EATER_38,
+    url: EATER_24H,
+    label: "Eater Austin 24-hour map",
+    markdown: `## 24 Diner
+Airport Blvd. Open around the clock. Booths, a full coffee pot, no last call.
+
+## Epoch Coffee
+North Loop. Independent coffee rooms. Not a chain. Open when the rest of town is closed.`,
+    matches: [
+      {
+        name: "24 Diner",
+        neighborhood: "Airport Blvd",
+        homePlaceName: "Lester’s Diner",
+        score: 9,
+        vibeTag: "24/7 booth",
+        quote: "Open around the clock. Booths, a full coffee pot, no last call.",
+        sourceUrl: EATER_24H,
+      },
+      {
+        name: "Epoch Coffee, North Loop",
+        neighborhood: "North Loop",
+        homePlaceName: "BREW Urban Cafe",
+        score: 8,
+        vibeTag: "not a chain",
+        quote: "Independent coffee rooms. Not a chain.",
+        sourceUrl: EATER_24H,
+      },
+    ],
   },
   {
-    name: "Crown & Anchor Pub",
-    neighborhood: "North Campus",
-    homePlaceName: "The Poor House",
-    score: 8,
-    vibeTag: "cheap",
-    quote: "Cheap pints, no polish.",
-    sourceUrl: EATER_38,
+    url: EATER_SOCO,
+    label: "Eater South Congress map",
+    markdown: `## Continental Club
+South Congress. Live-music room with dive energy. Not Sixth Street.
+
+## Habana Austin
+South Congress. Family Cuban plates. Ropa vieja, not a rum bar.`,
+    matches: [
+      {
+        name: "Continental Club",
+        neighborhood: "South Congress",
+        homePlaceName: "Elbo Room",
+        score: 9,
+        vibeTag: "dive",
+        quote: "Live-music room with dive energy. Not Sixth Street.",
+        sourceUrl: EATER_SOCO,
+      },
+      {
+        name: "Habana Austin",
+        neighborhood: "South Congress",
+        homePlaceName: "Padrino’s Cuban Cuisine",
+        score: 8,
+        vibeTag: "family Cuban",
+        quote: "Family Cuban plates. Ropa vieja, not a rum bar.",
+        sourceUrl: EATER_SOCO,
+      },
+    ],
   },
   {
-    name: "Better Half Coffee & Cocktails",
-    neighborhood: "Clarksville",
-    homePlaceName: "Brew Urban Cafe",
-    score: 8,
-    vibeTag: "counter",
-    quote: "Coffee-and-cocktails counter, not a laptop farm.",
-    sourceUrl: EATER_38,
+    url: HABANA_URL,
+    label: "Habana Austin",
+    markdown: `## Habana Austin
+Cuban restaurant on South Congress. Family tables. Ropa vieja, not a rum bar.`,
+    matches: [
+      {
+        name: "Habana Austin",
+        neighborhood: "South Congress",
+        homePlaceName: "Padrino’s Cuban Cuisine",
+        score: 8,
+        vibeTag: "family Cuban",
+        quote: "Family tables. Ropa vieja, not a rum bar.",
+        sourceUrl: HABANA_URL,
+      },
+    ],
   },
   {
-    name: "Veracruz All Natural",
-    neighborhood: "East Austin",
-    homePlaceName: "Padrino's",
-    score: 8,
-    vibeTag: "plates",
-    quote: "Everyday tacos and migas plates.",
-    sourceUrl: EATER_38,
-  },
-  {
-    name: "Franklin Barbecue",
-    neighborhood: "Downtown",
-    homePlaceName: "Lester's Diner",
-    score: 8,
-    vibeTag: "no-fuss",
-    quote: "The line is part of the meal. Institution, no fuss.",
-    sourceUrl: VISIT_AUSTIN,
-  },
-  {
-    name: "Bouldin Creek Café",
-    neighborhood: "Bouldin Creek",
-    homePlaceName: "Brew Urban Cafe",
-    score: 8,
-    vibeTag: "unhurried",
-    quote: "South Austin cafe hang — sit as long as you want.",
-    sourceUrl: EATER_38,
-  },
-  {
-    name: "Nixta Taqueria",
-    neighborhood: "East Austin",
-    homePlaceName: "Padrino's",
-    score: 8,
-    vibeTag: "plates",
-    quote: "Masa shop. Sunday plate energy.",
-    sourceUrl: EATER_38,
-  },
-  {
-    name: "Distant Relatives",
-    neighborhood: "East Austin",
-    homePlaceName: "Lester's Diner",
-    score: 7,
-    vibeTag: "no-fuss",
-    quote: "Outdoor barbecue hang. Unhurried, no-fuss plates.",
-    sourceUrl: EATER_38,
+    url: EPOCH_URL,
+    label: "Epoch Coffee",
+    markdown: `## Epoch Coffee
+North Loop. Independent coffee rooms. Not a chain.`,
+    matches: [
+      {
+        name: "Epoch Coffee, North Loop",
+        neighborhood: "North Loop",
+        homePlaceName: "BREW Urban Cafe",
+        score: 8,
+        vibeTag: "not a chain",
+        quote: "Independent coffee rooms. Not a chain.",
+        sourceUrl: EPOCH_URL,
+      },
+    ],
   },
 ];
+
+export const SURF_MISS_CARD = {
+  name: "Island Water Sports",
+  neighborhood: "Austin",
+  homePlaceName: "Island Water Sports",
+  score: 0,
+  vibeTag: "surf",
+  quote: SURF_MISS,
+  whyLine: SURF_MISS,
+} as const;
 
 export function demoWhy(match: DemoMatch): string {
   return buildWhyLine({
@@ -154,43 +201,25 @@ export function demoWhy(match: DemoMatch): string {
   });
 }
 
-export const AUSTIN_DEMO_EXCERPT = `Demo crawl excerpt — not a live Firecrawl run.
-
-## Joe's Bakery & Coffee Shop
-East Austin. Counter breakfast, no fuss.
-
-## Crown & Anchor Pub
-North Campus. Cheap pints, no polish.
-
-## Better Half Coffee & Cocktails
-Clarksville. Coffee-and-cocktails counter, not a laptop farm.
-
-## Veracruz All Natural
-East Austin. Everyday tacos and migas plates.
-
-## Franklin Barbecue
-Downtown. The line is part of the meal. Institution, no fuss.
-
-## Bouldin Creek Café
-Bouldin Creek. South Austin cafe hang — sit as long as you want.
-
-## Nixta Taqueria
-East Austin. Masa shop. Sunday plate energy.
-
-## Distant Relatives
-East Austin. Outdoor barbecue hang. Unhurried, no-fuss plates.
-
-Source pages: ${EATER_38} and ${VISIT_AUSTIN}.
-Usual labels this board as demo until a real crawl runs.`;
-
-export function demoPagesForAustin(): Array<
-  CitySource & { markdown: string }
-> {
+export function buildAustinOutbound(matches: DemoMatch[]): string {
+  const lines = matches.map(
+    (match) =>
+      `• ${match.name} (${match.neighborhood}) — ${demoWhy(match)}`,
+  );
   return [
-    {
-      url: EATER_38,
-      label: "Eater Austin 38",
-      markdown: AUSTIN_DEMO_EXCERPT,
-    },
-  ];
+    OUTBOUND_SUBJECT,
+    "",
+    ...lines,
+    "",
+    `Island Water Sports — ${SURF_MISS}`,
+    "",
+    "No Sixth Street.",
+  ].join("\n");
 }
+
+export const AUSTIN_MATCH_ORDER = [
+  "24 Diner",
+  "Continental Club",
+  "Habana Austin",
+  "Epoch Coffee, North Loop",
+] as const;

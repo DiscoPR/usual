@@ -2,6 +2,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { InboxCard } from "../components/InboxCard";
 import { parseCsvPlaces } from "../lib/utils";
 
 export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
@@ -10,6 +11,7 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
   const add = useMutation(api.taste.add);
   const addMany = useMutation(api.taste.addMany);
   const remove = useMutation(api.taste.remove);
+  const resetDemo = useMutation(api.seed.resetDemo);
   const enrich = useAction(api.enrich.enrichPlace);
   const [name, setName] = useState("");
   const [city, setCity] = useState("Fort Lauderdale");
@@ -63,12 +65,14 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
+      <InboxCard />
+
       <div>
         <h1 className="font-serif text-2xl">Your usuals</h1>
         <p className="mt-1 text-muted">
-          Five to twelve home spots. The why line sets the tags. A URL can
-          enrich the card. No Google Takeout.
+          Five home spots. The why line is the taste. Usual will look for the
+          same kind of place in the city you land in — not a tourist list.
         </p>
         {profile && profile.categories.length > 0 ? (
           <p className="mt-3 text-sm text-muted">
@@ -202,7 +206,7 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
           rows={4}
           value={csv}
           onChange={(event) => setCsv(event.target.value)}
-          placeholder={"Lester's Diner,Fort Lauderdale,Late eggs"}
+          placeholder={"Lester’s Diner,Fort Lauderdale,24/7 booth"}
         />
         <button
           type="button"
@@ -212,6 +216,14 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
           Import CSV
         </button>
       </div>
+
+      <button
+        type="button"
+        className="text-sm text-muted underline"
+        onClick={() => void resetDemo()}
+      >
+        Reset demo seed
+      </button>
     </section>
   );
 }

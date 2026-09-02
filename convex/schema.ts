@@ -50,6 +50,8 @@ export const messageDirection = v.union(
 );
 
 export const messageStatus = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
   v.literal("received"),
   v.literal("draft"),
   v.literal("sent"),
@@ -130,6 +132,7 @@ export default defineSchema({
     source: matchSource,
     sourceUrl: v.union(v.string(), v.null()),
     grounded: v.boolean(),
+    isMiss: v.optional(v.boolean()),
   })
     .index("by_trip", ["tripId"])
     .index("by_trip_name", ["tripId", "name"]),
@@ -141,5 +144,7 @@ export default defineSchema({
     subject: v.string(),
     body: v.string(),
     fromLabel: v.string(),
-  }).index("by_trip", ["tripId"]),
+  })
+    .index("by_trip", ["tripId"])
+    .index("by_status", ["status"]),
 });

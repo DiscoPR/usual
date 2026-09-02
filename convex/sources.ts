@@ -5,16 +5,20 @@ export type CitySource = {
 
 const AUSTIN: CitySource[] = [
   {
-    url: "https://austin.eater.com/maps/best-restaurants-austin-eater-38",
-    label: "Eater Austin 38",
+    url: "https://austin.eater.com/maps/best-24-hour-restaurants-austin-cafes-diners-all-hours-24-7",
+    label: "Eater Austin 24-hour map",
   },
   {
-    url: "https://www.austinchronicle.com/food/",
-    label: "Austin Chronicle Food",
+    url: "https://austin.eater.com/maps/south-congress-austin-best-restaurants-bars-dining-guide-where-to-eat-travis-heights-bouldin-creek",
+    label: "Eater South Congress map",
   },
   {
-    url: "https://www.austintexas.org/food-and-drink/",
-    label: "Visit Austin dining",
+    url: "https://www.habanaaustin.com/",
+    label: "Habana Austin",
+  },
+  {
+    url: "https://epochcoffee.com/",
+    label: "Epoch Coffee",
   },
 ];
 
@@ -42,6 +46,10 @@ export function parseTripRequest(text: string): {
 } | null {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (cleaned.length === 0) return null;
+
+  if (/\baustin\b/i.test(cleaned) && /this weekend/i.test(cleaned)) {
+    return { city: "Austin", dateLabel: "this weekend" };
+  }
 
   const weekend = cleaned.match(
     /^(.+?)\s+(this weekend|next weekend|this week)$/i,
