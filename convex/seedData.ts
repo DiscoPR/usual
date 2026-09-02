@@ -223,3 +223,5 @@ export const AUSTIN_MATCH_ORDER = [
   "Habana Austin",
   "Epoch Coffee, North Loop",
 ] as const;
+
+export const EXPECTED_TASTE_NAMES = DEMO_TASTE.map((spot) => spot.name);
