@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:17:07Z
+- **Last updated:** 2026-09-02T01:54:20Z
 
 ## Log
 
@@ -33,3 +33,6 @@ Checked for Convex cloud credentials so Usual could go into the existing project
 
 ### 2026-09-02 - 379b538
 Deployed Usual into the existing Hackathon project on team Vital 5 (development deployment elated-perch-355). Backend functions and the static frontend are live at https://elated-perch-355.convex.site; Convex cloud is https://elated-perch-355.convex.cloud. A GET of the site returns title “Usual — your usual, in this city” with the built JS/CSS, not an empty Convex page. Did not create a new project. Did not print or commit secrets.
+
+### 2026-09-02 - bf913d3
+Any town is a first-class crawl. `refreshCity` Firecrawl-searches dining/bar/coffee list pages for the typed city, scrapes only returned URLs, then merges optional Austin / Lisbon / Hoboken boosts. `sourcesForCity` returning empty is not a failure; the only empty-state copy is `No public lists found for {city}`. Live matching no longer allowlists four Austin names (`convex/crawl.ts`, `convex/sources.ts`, `convex/match.ts`). Cloud redeploy did not run: `CONVEX_DEPLOY_KEY` is not in this session, so https://elated-perch-355.convex.site still serves the previous build. Did not invent a key.
