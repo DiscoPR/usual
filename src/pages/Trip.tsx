@@ -114,7 +114,8 @@ export function Trip() {
         <h2 className="font-serif text-xl">Matches</h2>
         {matches.length === 0 ? (
           <p className="mt-2 border border-line px-4 py-5 text-muted">
-            No matches yet. Crawl a city, or open the seeded Austin trip.
+            No matches at 7 or above. Crawl a city, or open the seeded Austin
+            trip.
           </p>
         ) : (
           <ol className="mt-3 space-y-3">
@@ -123,12 +124,29 @@ export function Trip() {
                 key={match._id}
                 className="border border-line bg-white/70 px-4 py-4"
               >
-                <p className="text-lg font-medium">{match.name}</p>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-lg font-medium">{match.name}</p>
+                  <p className="text-sm font-medium">{match.score}/10</p>
+                </div>
                 <p className="text-sm text-muted">{match.neighborhood}</p>
-                <p className="mt-2">{match.whyMirrors}</p>
-                <p className="mt-2 font-medium">{match.goIfLine}</p>
+                <p className="mt-2 text-sm">
+                  Matched: {match.homePlaceName}
+                  {match.vibeTag ? ` · ${match.vibeTag}` : ""}
+                </p>
+                <p className="mt-2">{match.whyLine}</p>
+                {match.sourceUrl ? (
+                  <a
+                    href={match.sourceUrl}
+                    className="mt-2 inline-block text-sm text-accent underline break-all"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Source
+                  </a>
+                ) : null}
                 <p className="mt-2 text-xs uppercase tracking-wide text-muted">
-                  {match.grounded ? "Grounded" : "Model guess"} · {match.source}
+                  {match.source === "demo" ? "Demo · " : ""}
+                  grounded · score hides below 7
                 </p>
               </li>
             ))}

@@ -140,8 +140,11 @@ export const draftFromMatches = mutation({
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
       .take(12);
-    const lines = matches.map(
-      (match) => `• ${match.name} (${match.neighborhood}) — ${match.goIfLine}`,
+    const visible = matches
+      .filter((match) => (match.score ?? 0) >= 7 && match.whyLine)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    const lines = visible.map(
+      (match) => `• ${match.name} (${match.score}) — ${match.whyLine}`,
     );
     const body = [
       `${trip.city}, ${trip.dateLabel}.`,

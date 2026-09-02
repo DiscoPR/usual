@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { crawlPageStatus, matchSource } from "./schema";
 
 export const listPages = query({
@@ -30,27 +30,30 @@ export const listPages = query({
   },
 });
 
-export const listMarkdown = query({
-  args: { tripId: v.id("trips") },
-  returns: v.array(
+export const getPage = internalQuery({
+  args: { pageId: v.id("crawlPages") },
+  returns: v.union(
     v.object({
+      _id: v.id("crawlPages"),
+      tripId: v.id("trips"),
       url: v.string(),
       label: v.string(),
-      markdown: v.string(),
+      markdown: v.union(v.string(), v.null()),
+      status: crawlPageStatus,
     }),
+    v.null(),
   ),
   handler: async (ctx, args) => {
-    const pages = await ctx.db
-      .query("crawlPages")
-      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(20);
-    return pages
-      .filter((page) => page.status === "ok" && page.markdown)
-      .map((page) => ({
-        url: page.url,
-        label: page.label,
-        markdown: page.markdown ?? "",
-      }));
+    const page = await ctx.db.get(args.pageId);
+    if (!page) return null;
+    return {
+      _id: page._id,
+      tripId: page.tripId,
+      url: page.url,
+      label: page.label,
+      markdown: page.markdown,
+      status: page.status,
+    };
   },
 });
 
@@ -69,7 +72,43 @@ export const addPage = internalMutation({
   },
 });
 
-export const clearPages = internalMutation({
+export const addCandidates = internalMutation({
+  args: {
+    tripId: v.id("trips"),
+    crawlPageId: v.id("crawlPages"),
+    candidates: v.array(
+      v.object({
+        name: v.string(),
+        neighborhood: v.string(),
+        categories: v.array(v.string()),
+        snippet: v.string(),
+        sourceUrl: v.string(),
+      }),
+    ),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    let added = 0;
+    for (const candidate of args.candidates.slice(0, 40)) {
+      const existing = await ctx.db
+        .query("candidates")
+        .withIndex("by_trip_name", (q) =>
+          q.eq("tripId", args.tripId).eq("name", candidate.name),
+        )
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("candidates", {
+        tripId: args.tripId,
+        crawlPageId: args.crawlPageId,
+        ...candidate,
+      });
+      added += 1;
+    }
+    return added;
+  },
+});
+
+export const clearTripExtract = internalMutation({
   args: { tripId: v.id("trips") },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -77,9 +116,17 @@ export const clearPages = internalMutation({
       .query("crawlPages")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
       .take(40);
-    for (const page of pages) {
-      await ctx.db.delete(page._id);
-    }
+    for (const page of pages) await ctx.db.delete(page._id);
+    const candidates = await ctx.db
+      .query("candidates")
+      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
+      .take(80);
+    for (const row of candidates) await ctx.db.delete(row._id);
+    const matches = await ctx.db
+      .query("matches")
+      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
+      .take(40);
+    for (const row of matches) await ctx.db.delete(row._id);
     return null;
   },
 });
@@ -92,8 +139,10 @@ export const listMatches = query({
       name: v.string(),
       neighborhood: v.string(),
       homePlaceName: v.string(),
-      whyMirrors: v.string(),
-      goIfLine: v.string(),
+      score: v.number(),
+      whyLine: v.string(),
+      vibeTag: v.string(),
+      quote: v.string(),
       source: matchSource,
       sourceUrl: v.union(v.string(), v.null()),
       grounded: v.boolean(),
@@ -103,60 +152,74 @@ export const listMatches = query({
     const rows = await ctx.db
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(20);
-    return rows.map((row) => ({
-      _id: row._id,
-      name: row.name,
-      neighborhood: row.neighborhood,
-      homePlaceName: row.homePlaceName,
-      whyMirrors: row.whyMirrors,
-      goIfLine: row.goIfLine,
-      source: row.source,
-      sourceUrl: row.sourceUrl,
-      grounded: row.grounded,
-    }));
+      .take(40);
+    return rows
+      .filter(
+        (row) =>
+          (row.source === "crawl" || row.source === "demo") &&
+          (row.score ?? 0) >= 7 &&
+          Boolean(row.whyLine) &&
+          row.grounded,
+      )
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 16)
+      .map((row) => ({
+        _id: row._id,
+        name: row.name,
+        neighborhood: row.neighborhood,
+        homePlaceName: row.homePlaceName,
+        score: row.score ?? 0,
+        whyLine: row.whyLine ?? "",
+        vibeTag: row.vibeTag ?? "",
+        quote: row.quote ?? "",
+        source: row.source,
+        sourceUrl: row.sourceUrl,
+        grounded: row.grounded,
+      }));
   },
 });
 
-export const replaceMatches = internalMutation({
+export const upsertMatch = internalMutation({
   args: {
     tripId: v.id("trips"),
-    matches: v.array(
-      v.object({
-        name: v.string(),
-        neighborhood: v.string(),
-        homePlaceName: v.string(),
-        whyMirrors: v.string(),
-        goIfLine: v.string(),
-        source: matchSource,
-        sourceUrl: v.union(v.string(), v.null()),
-        grounded: v.boolean(),
-      }),
-    ),
-    matchNote: v.union(v.string(), v.null()),
+    name: v.string(),
+    neighborhood: v.string(),
+    homePlaceName: v.string(),
+    score: v.number(),
+    whyLine: v.string(),
+    vibeTag: v.string(),
+    quote: v.string(),
+    source: v.union(v.literal("crawl"), v.literal("demo")),
+    sourceUrl: v.string(),
   },
-  returns: v.null(),
+  returns: v.boolean(),
   handler: async (ctx, args) => {
+    if (args.score < 7) return false;
     const existing = await ctx.db
       .query("matches")
-      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(40);
-    for (const row of existing) {
-      await ctx.db.delete(row._id);
+      .withIndex("by_trip_name", (q) =>
+        q.eq("tripId", args.tripId).eq("name", args.name),
+      )
+      .unique();
+    const doc = {
+      tripId: args.tripId,
+      name: args.name,
+      neighborhood: args.neighborhood,
+      homePlaceName: args.homePlaceName,
+      score: args.score,
+      whyLine: args.whyLine,
+      vibeTag: args.vibeTag,
+      quote: args.quote,
+      source: args.source,
+      sourceUrl: args.sourceUrl,
+      grounded: true,
+    };
+    if (!existing) {
+      await ctx.db.insert("matches", doc);
+      return true;
     }
-    for (const match of args.matches.slice(0, 12)) {
-      await ctx.db.insert("matches", {
-        tripId: args.tripId,
-        ...match,
-      });
-    }
-    await ctx.db.patch(args.tripId, {
-      matchNote: args.matchNote,
-      status: "ready",
-      crawlStatus: args.matches.some((m) => m.source === "demo")
-        ? "demo"
-        : "ready",
-    });
-    return null;
+    if ((existing.score ?? 0) >= args.score) return false;
+    await ctx.db.patch(existing._id, doc);
+    return true;
   },
 });

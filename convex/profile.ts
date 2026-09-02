@@ -10,6 +10,9 @@ export const getDemo = query({
       slug: v.string(),
       displayName: v.string(),
       homeCity: v.string(),
+      categories: v.array(v.string()),
+      vibeTags: v.array(v.string()),
+      priceBand: v.union(v.string(), v.null()),
     }),
     v.null(),
   ),
@@ -24,6 +27,9 @@ export const getDemo = query({
       slug: profile.slug,
       displayName: profile.displayName,
       homeCity: profile.homeCity,
+      categories: profile.categories ?? [],
+      vibeTags: profile.vibeTags ?? [],
+      priceBand: profile.priceBand ?? null,
     };
   },
 });

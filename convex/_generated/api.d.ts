@@ -10,6 +10,7 @@
 
 import type * as crawl from "../crawl.js";
 import type * as crawls from "../crawls.js";
+import type * as enrich from "../enrich.js";
 import type * as http from "../http.js";
 import type * as mail from "../mail.js";
 import type * as match from "../match.js";
@@ -18,6 +19,7 @@ import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
 import type * as sources from "../sources.js";
 import type * as taste from "../taste.js";
+import type * as taxonomy from "../taxonomy.js";
 import type * as trips from "../trips.js";
 
 import type {
@@ -29,6 +31,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   crawl: typeof crawl;
   crawls: typeof crawls;
+  enrich: typeof enrich;
   http: typeof http;
   mail: typeof mail;
   match: typeof match;
@@ -37,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   seedData: typeof seedData;
   sources: typeof sources;
   taste: typeof taste;
+  taxonomy: typeof taxonomy;
   trips: typeof trips;
 }>;
 

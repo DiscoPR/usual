@@ -1,27 +1,39 @@
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { parseCsvPlaces } from "../lib/utils";
 
 export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
+  const profile = useQuery(api.profile.getDemo);
   const places = useQuery(api.taste.list, { profileId });
   const add = useMutation(api.taste.add);
   const addMany = useMutation(api.taste.addMany);
   const remove = useMutation(api.taste.remove);
+  const enrich = useAction(api.enrich.enrichPlace);
   const [name, setName] = useState("");
   const [city, setCity] = useState("Fort Lauderdale");
   const [note, setNote] = useState("");
+  const [url, setUrl] = useState("");
   const [csv, setCsv] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [enriching, setEnriching] = useState<string | null>(null);
 
   async function onAdd(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     try {
-      await add({ profileId, name, city, note, source: "manual" });
+      await add({
+        profileId,
+        name,
+        city,
+        note,
+        url: url.trim() || null,
+        source: "manual",
+      });
       setName("");
       setNote("");
+      setUrl("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add place.");
     }
@@ -31,11 +43,19 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
     setError(null);
     const rows = parseCsvPlaces(csv);
     if (rows.length === 0) {
-      setError("CSV needs name,city,note on each line.");
+      setError("CSV needs name,city,note[,url] on each line.");
       return;
     }
     await addMany({ profileId, places: rows, source: "csv" });
     setCsv("");
+  }
+
+  async function onEnrich(placeId: Id<"tastePlaces">) {
+    setEnriching(placeId);
+    setError(null);
+    const result = await enrich({ placeId });
+    if (!result.enriched) setError(result.reason);
+    setEnriching(null);
   }
 
   if (places === undefined) {
@@ -47,9 +67,18 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
       <div>
         <h1 className="font-serif text-2xl">Your usuals</h1>
         <p className="mt-1 text-muted">
-          South Florida spots you already go to. Seeded so you can click
-          through — add one more if you want.
+          Five to twelve home spots. The why line sets the tags. A URL can
+          enrich the card. No Google Takeout.
         </p>
+        {profile && profile.categories.length > 0 ? (
+          <p className="mt-3 text-sm text-muted">
+            Profile: {profile.categories.join(" · ")}
+            {profile.vibeTags.length > 0
+              ? ` — ${profile.vibeTags.join(", ")}`
+              : ""}
+            {profile.priceBand ? ` · ${profile.priceBand}` : ""}
+          </p>
+        ) : null}
       </div>
 
       {places.length === 0 ? (
@@ -68,21 +97,50 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
                   <p className="text-lg font-medium">{place.name}</p>
                   <p className="text-sm text-muted">{place.city}</p>
                   <p className="mt-2 text-base">{place.note}</p>
+                  <p className="mt-2 text-xs uppercase tracking-wide text-muted">
+                    {place.categories.join(" · ")}
+                    {place.priceBand ? ` · ${place.priceBand}` : ""}
+                    {place.vibeTags.length > 0
+                      ? ` — ${place.vibeTags.join(", ")}`
+                      : ""}
+                  </p>
+                  {place.url ? (
+                    <a
+                      href={place.url}
+                      className="mt-2 inline-block text-sm text-accent underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Source URL
+                    </a>
+                  ) : null}
                   {place.source === "seed" ? (
                     <p className="mt-2 text-xs uppercase tracking-wide text-muted">
                       Demo seed
                     </p>
                   ) : null}
                 </div>
-                {place.source !== "seed" ? (
-                  <button
-                    type="button"
-                    className="text-sm text-accent underline"
-                    onClick={() => void remove({ placeId: place._id })}
-                  >
-                    Remove
-                  </button>
-                ) : null}
+                <div className="flex flex-col items-end gap-2">
+                  {place.url ? (
+                    <button
+                      type="button"
+                      className="text-sm text-accent underline"
+                      disabled={enriching === place._id}
+                      onClick={() => void onEnrich(place._id)}
+                    >
+                      {enriching === place._id ? "Enriching…" : "Enrich"}
+                    </button>
+                  ) : null}
+                  {place.source !== "seed" ? (
+                    <button
+                      type="button"
+                      className="text-sm text-accent underline"
+                      onClick={() => void remove({ placeId: place._id })}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </li>
           ))}
@@ -117,11 +175,19 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
             placeholder="Counter stool. No rush."
           />
         </label>
+        <label className="block">
+          <span className="mb-1 block text-sm text-muted">
+            URL (optional — enrich from the page)
+          </span>
+          <input
+            className="w-full border border-line bg-white px-3 py-2"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder="https://"
+          />
+        </label>
         {error ? <p className="text-accent">{error}</p> : null}
-        <button
-          type="submit"
-          className="w-full bg-ink px-4 py-3 text-paper"
-        >
+        <button type="submit" className="w-full bg-ink px-4 py-3 text-paper">
           Save place
         </button>
       </form>
@@ -129,7 +195,7 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
       <div className="space-y-3">
         <h2 className="font-serif text-xl">CSV import</h2>
         <p className="text-sm text-muted">
-          Columns: name, city, note. No Google Takeout.
+          Columns: name, city, note, optional url. No Google Takeout.
         </p>
         <textarea
           className="w-full border border-line bg-white px-3 py-2"

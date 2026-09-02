@@ -5,122 +5,225 @@ import { convexGateway } from "@convex-dev/ai-sdk-provider";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import {
+  buildWhyLine,
+  categoryOverlap,
+  extractCandidates,
+  pickQuote,
+  type Anchor,
+  type Candidate,
+} from "./taxonomy";
 
-export const fromCrawl = internalAction({
-  args: { tripId: v.id("trips") },
+export const fromPage = internalAction({
+  args: { pageId: v.id("crawlPages") },
   returns: v.object({
+    candidates: v.number(),
+    kept: v.number(),
     usedModel: v.boolean(),
-    count: v.number(),
   }),
-  handler: async (ctx, args) => {
-    const trip = await ctx.runQuery(api.trips.get, { tripId: args.tripId });
-    if (!trip) throw new Error("Trip not found.");
-    const taste = await ctx.runQuery(api.taste.list, {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ candidates: number; kept: number; usedModel: boolean }> => {
+    const page = (await ctx.runQuery(internal.crawls.getPage, {
+      pageId: args.pageId,
+    })) as {
+      _id: Id<"crawlPages">;
+      tripId: Id<"trips">;
+      url: string;
+      markdown: string | null;
+    } | null;
+    if (!page || !page.markdown) {
+      return { candidates: 0, kept: 0, usedModel: false };
+    }
+    const markdown = page.markdown;
+    const trip = await ctx.runQuery(api.trips.get, { tripId: page.tripId });
+    if (!trip) return { candidates: 0, kept: 0, usedModel: false };
+
+    const extracted: Candidate[] = extractCandidates(markdown, page.url).filter(
+      (candidate: Candidate) =>
+        markdown.toLowerCase().includes(candidate.name.toLowerCase()),
+    );
+    await ctx.runMutation(internal.crawls.addCandidates, {
+      tripId: page.tripId,
+      crawlPageId: page._id,
+      candidates: extracted,
+    });
+
+    const anchors = await ctx.runQuery(api.taste.listAnchors, {
       profileId: trip.profileId,
     });
-    const pages = await ctx.runQuery(api.crawls.listMarkdown, {
-      tripId: args.tripId,
-    });
-
-    const crawled = pages
-      .map(
-        (page) =>
-          `SOURCE ${page.label} (${page.url})\n${page.markdown.slice(0, 6000)}`,
-      )
-      .join("\n\n");
-    const tasteLines = taste
-      .map((place) => `- ${place.name} (${place.city}): ${place.note}`)
-      .join("\n");
-
-    const result = await proposeMatches({
-      city: trip.city,
-      tasteLines,
-      crawled,
-    });
-
-    await ctx.runMutation(internal.crawls.replaceMatches, {
-      tripId: args.tripId,
-      matches: result.matches,
-      matchNote: result.note,
-    });
-
-    const draft = [
-      `${trip.city}, ${trip.dateLabel}.`,
-      "",
-      result.note,
-      "",
-      ...result.matches.map(
-        (match) =>
-          `• ${match.name} (${match.neighborhood}) — ${match.goIfLine}`,
+    const remaining = extracted.filter((candidate) =>
+      anchors.some((anchor) =>
+        categoryOverlap(anchor.categories, candidate.categories),
       ),
-      "",
-      "Usual does not send this until you tap Send.",
-    ].join("\n");
+    );
+    if (remaining.length === 0) {
+      return { candidates: extracted.length, kept: 0, usedModel: false };
+    }
 
-    await ctx.runMutation(api.trips.saveDraft, {
-      tripId: args.tripId,
-      emailSubject: `Your usual, in ${trip.city} — ${trip.dateLabel}`,
-      emailDraft: draft,
-    });
-
-    return { usedModel: result.usedModel, count: result.matches.length };
+    const scored = await scoreAgainstAnchors(remaining, anchors);
+    let kept = 0;
+    for (const row of scored) {
+      const wrote = await ctx.runMutation(internal.crawls.upsertMatch, {
+        tripId: page.tripId,
+        name: row.candidate.name,
+        neighborhood: row.candidate.neighborhood,
+        homePlaceName: row.anchor.name,
+        score: row.score,
+        whyLine: row.whyLine,
+        vibeTag: row.tag,
+        quote: row.quote,
+        source: "crawl",
+        sourceUrl: row.candidate.sourceUrl,
+      });
+      if (wrote) kept += 1;
+    }
+    return { candidates: extracted.length, kept, usedModel: scored.usedModel };
   },
 });
 
-async function proposeMatches(input: {
-  city: string;
-  tasteLines: string;
-  crawled: string;
-}): Promise<{
-  matches: Array<{
-    name: string;
-    neighborhood: string;
-    homePlaceName: string;
-    whyMirrors: string;
-    goIfLine: string;
-    source: "crawl" | "demo" | "model_guess" | "placeholder";
-    sourceUrl: string | null;
-    grounded: boolean;
-  }>;
-  note: string;
-  usedModel: boolean;
-}> {
-  const prompt = `You match a traveler's home-city usuals to places in ${input.city}.
+type Scored = {
+  candidate: Candidate;
+  anchor: Anchor;
+  score: number;
+  tag: string;
+  quote: string;
+  whyLine: string;
+};
 
-TASTE:
-${input.tasteLines}
-
-CRAWLED PUBLIC PAGES:
-${input.crawled}
-
-Return JSON only: { "matches": [ ... 8 items ... ] }
-Each item:
-- name: place name that appears in the crawled text
-- neighborhood: from the crawl if present, else "unknown"
-- homePlaceName: which taste spot it mirrors
-- whyMirrors: one sentence
-- goIfLine: "Go here if you liked X."
-- sourceUrl: the source URL from the crawl that mentioned the place
-- grounded: true only if the name appears in the crawled text
-- source: "crawl" if grounded, else "model_guess"
-
-Never invent a grounded place. If you are guessing, source must be model_guess and grounded false. Prefer grounded names. Max 8.`;
-
-  const raw = await callModel(prompt);
-  if (!raw.ok) {
-    return {
-      usedModel: false,
-      note: "[Placeholder — no OpenAI or Convex AI Gateway] No live model response. Crawl text is stored; matches were not invented.",
-      matches: [],
-    };
+async function scoreAgainstAnchors(
+  candidates: Candidate[],
+  anchors: Anchor[],
+): Promise<Scored[] & { usedModel: boolean }> {
+  const pairs: Array<{ candidate: Candidate; anchor: Anchor }> = [];
+  for (const candidate of candidates) {
+    for (const anchor of anchors) {
+      if (categoryOverlap(anchor.categories, candidate.categories)) {
+        pairs.push({ candidate, anchor });
+      }
+    }
   }
 
-  const parsed = parseModelMatches(raw.text, input.crawled);
-  return {
-    usedModel: true,
-    note: `Live model pass (${raw.model}). Grounded names preferred from crawled pages.`,
-    matches: parsed,
-  };
+  const raw = await callModel(scorePrompt(pairs));
+  const byName = new Map<string, Scored>();
+
+  if (raw.ok) {
+    const parsed = parseScores(raw.text);
+    for (const pair of pairs) {
+      const hit = parsed.find(
+        (item) =>
+          item.candidate.toLowerCase() === pair.candidate.name.toLowerCase() &&
+          item.anchor.toLowerCase() === pair.anchor.name.toLowerCase(),
+      );
+      const quote = pickQuote(pair.candidate.snippet, hit?.quote);
+      if (!quote) continue;
+      const tag =
+        hit?.tag && pair.anchor.vibeTags.includes(hit.tag)
+          ? hit.tag
+          : sharedTag(pair.anchor, pair.candidate);
+      const score = clampScore(hit?.score ?? 0);
+      consider(byName, {
+        candidate: pair.candidate,
+        anchor: pair.anchor,
+        score,
+        tag,
+        quote,
+        whyLine: buildWhyLine({
+          anchor: pair.anchor.name,
+          tag,
+          candidate: pair.candidate.name,
+          quote,
+        }),
+      });
+    }
+    return Object.assign([...byName.values()], { usedModel: true });
+  }
+
+  for (const pair of pairs) {
+    const quote = pickQuote(pair.candidate.snippet);
+    if (!quote) continue;
+    const tag = sharedTag(pair.anchor, pair.candidate);
+    const snippetLower = pair.candidate.snippet.toLowerCase();
+    const tagHit = pair.anchor.vibeTags.some((item) =>
+      snippetLower.includes(item.toLowerCase()),
+    );
+    const score = tagHit ? 7 : 0;
+    consider(byName, {
+      candidate: pair.candidate,
+      anchor: pair.anchor,
+      score,
+      tag,
+      quote,
+      whyLine: buildWhyLine({
+        anchor: pair.anchor.name,
+        tag,
+        candidate: pair.candidate.name,
+        quote,
+      }),
+    });
+  }
+  return Object.assign([...byName.values()], { usedModel: false });
+}
+
+function consider(map: Map<string, Scored>, row: Scored) {
+  if (row.score < 7) return;
+  const current = map.get(row.candidate.name);
+  if (!current || row.score > current.score) {
+    map.set(row.candidate.name, row);
+  }
+}
+
+function sharedTag(anchor: Anchor, candidate: Candidate): string {
+  const hay = `${candidate.snippet} ${candidate.categories.join(" ")}`.toLowerCase();
+  const hit = anchor.vibeTags.find((tag) => hay.includes(tag.toLowerCase()));
+  return hit ?? anchor.vibeTags[0] ?? "usual";
+}
+
+function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(10, Math.round(value)));
+}
+
+function scorePrompt(
+  pairs: Array<{ candidate: Candidate; anchor: Anchor }>,
+): string {
+  const lines = pairs.map(
+    (pair) =>
+      `- CANDIDATE ${pair.candidate.name} | cats ${pair.candidate.categories.join(",")} | snippet: ${pair.candidate.snippet}\n  ANCHOR ${pair.anchor.name} | cats ${pair.anchor.categories.join(",")} | tags ${pair.anchor.vibeTags.join(",")} | why ${pair.anchor.note}`,
+  );
+  return `Score each candidate against each listed anchor from 1-10.
+Hard rule: only use the given snippet. quote must be copied from that snippet.
+tag must be one of the anchor tags.
+Return JSON only: { "scores": [ { "candidate", "anchor", "score", "tag", "quote" } ] }
+
+${lines.join("\n")}`;
+}
+
+function parseScores(text: string): Array<{
+  candidate: string;
+  anchor: string;
+  score: number;
+  tag: string;
+  quote: string;
+}> {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return [];
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      scores?: Array<Record<string, unknown>>;
+    };
+    return (parsed.scores ?? []).map((item) => ({
+      candidate: String(item.candidate ?? ""),
+      anchor: String(item.anchor ?? ""),
+      score: Number(item.score ?? 0),
+      tag: String(item.tag ?? ""),
+      quote: String(item.quote ?? ""),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 async function callModel(
@@ -132,10 +235,14 @@ async function callModel(
       prompt,
     });
     if (text.trim().length > 0) {
-      return { ok: true, text, model: "openai/gpt-4o-mini via Convex AI Gateway" };
+      return {
+        ok: true,
+        text,
+        model: "openai/gpt-4o-mini via Convex AI Gateway",
+      };
     }
   } catch {
-    // Gateway disabled, unpaid, or local — try OPENAI_API_KEY next.
+    // Gateway disabled — try OPENAI_API_KEY.
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -151,7 +258,7 @@ async function callModel(
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
     if (!response.ok) return { ok: false };
@@ -163,47 +270,5 @@ async function callModel(
     return { ok: true, text, model: "gpt-4o-mini via OPENAI_API_KEY" };
   } catch {
     return { ok: false };
-  }
-}
-
-function parseModelMatches(
-  text: string,
-  crawled: string,
-): Array<{
-  name: string;
-  neighborhood: string;
-  homePlaceName: string;
-  whyMirrors: string;
-  goIfLine: string;
-  source: "crawl" | "model_guess";
-  sourceUrl: string | null;
-  grounded: boolean;
-}> {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return [];
-  try {
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      matches?: Array<Record<string, unknown>>;
-    };
-    const crawlLower = crawled.toLowerCase();
-    return (parsed.matches ?? []).slice(0, 8).map((item) => {
-      const name = String(item.name ?? "").trim();
-      const grounded =
-        name.length > 0 && crawlLower.includes(name.toLowerCase());
-      return {
-        name: name || "Unnamed",
-        neighborhood: String(item.neighborhood ?? "unknown"),
-        homePlaceName: String(item.homePlaceName ?? "your usual"),
-        whyMirrors: String(item.whyMirrors ?? ""),
-        goIfLine: String(
-          item.goIfLine ?? `Go here if you liked ${item.homePlaceName ?? "your usual"}.`,
-        ),
-        source: grounded ? "crawl" : "model_guess",
-        sourceUrl: item.sourceUrl ? String(item.sourceUrl) : null,
-        grounded,
-      };
-    });
-  } catch {
-    return [];
   }
 }

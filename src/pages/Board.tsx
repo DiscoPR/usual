@@ -34,8 +34,8 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
       <div>
         <h1 className="font-serif text-2xl">Trips</h1>
         <p className="mt-1 text-muted">
-          Open Austin and watch matches sit on the board. Crawl when you have
-          a Firecrawl key — the list updates live.
+          Open Austin and watch matches land as each list page is scored.
+          Category has to overlap a home usual. Score hides below 7.
         </p>
       </div>
 

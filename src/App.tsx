@@ -12,10 +12,8 @@ export default function App() {
   const ensureDemo = useMutation(api.seed.ensureDemo);
 
   useEffect(() => {
-    if (profile === null) {
-      void ensureDemo();
-    }
-  }, [profile, ensureDemo]);
+    void ensureDemo();
+  }, [ensureDemo]);
 
   if (profile === undefined) {
     return (

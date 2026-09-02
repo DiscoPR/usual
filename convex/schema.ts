@@ -62,6 +62,9 @@ export default defineSchema({
     slug: v.string(),
     displayName: v.string(),
     homeCity: v.string(),
+    categories: v.optional(v.array(v.string())),
+    vibeTags: v.optional(v.array(v.string())),
+    priceBand: v.optional(v.union(v.string(), v.null())),
   }).index("by_slug", ["slug"]),
 
   tastePlaces: defineTable({
@@ -69,6 +72,11 @@ export default defineSchema({
     name: v.string(),
     city: v.string(),
     note: v.string(),
+    url: v.optional(v.union(v.string(), v.null())),
+    categories: v.optional(v.array(v.string())),
+    vibeTags: v.optional(v.array(v.string())),
+    priceBand: v.optional(v.union(v.string(), v.null())),
+    descriptors: v.optional(v.array(v.string())),
     source: tasteSource,
   }).index("by_profile", ["profileId"]),
 
@@ -96,17 +104,35 @@ export default defineSchema({
     skipReason: v.union(v.string(), v.null()),
   }).index("by_trip", ["tripId"]),
 
+  candidates: defineTable({
+    tripId: v.id("trips"),
+    crawlPageId: v.id("crawlPages"),
+    name: v.string(),
+    neighborhood: v.string(),
+    categories: v.array(v.string()),
+    snippet: v.string(),
+    sourceUrl: v.string(),
+  })
+    .index("by_trip", ["tripId"])
+    .index("by_trip_name", ["tripId", "name"]),
+
   matches: defineTable({
     tripId: v.id("trips"),
     name: v.string(),
     neighborhood: v.string(),
     homePlaceName: v.string(),
-    whyMirrors: v.string(),
-    goIfLine: v.string(),
+    score: v.optional(v.number()),
+    whyLine: v.optional(v.string()),
+    vibeTag: v.optional(v.string()),
+    quote: v.optional(v.string()),
+    whyMirrors: v.optional(v.string()),
+    goIfLine: v.optional(v.string()),
     source: matchSource,
     sourceUrl: v.union(v.string(), v.null()),
     grounded: v.boolean(),
-  }).index("by_trip", ["tripId"]),
+  })
+    .index("by_trip", ["tripId"])
+    .index("by_trip_name", ["tripId", "name"]),
 
   messages: defineTable({
     tripId: v.union(v.id("trips"), v.null()),

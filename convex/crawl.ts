@@ -25,7 +25,7 @@ export const refreshCity = action({
         crawlStatus: "missing_key",
         status: trip.status,
         crawlError:
-          "FIRECRAWL_API_KEY is not set. Demo excerpt stays. This is not a successful crawl.",
+          "FIRECRAWL_API_KEY is not set. Demo matches stay. This is not a successful crawl.",
       });
       return { crawled: 0, skipped: 0, missingKey: true };
     }
@@ -47,7 +47,9 @@ export const refreshCity = action({
       status: "crawling",
       crawlError: null,
     });
-    await ctx.runMutation(internal.crawls.clearPages, { tripId: args.tripId });
+    await ctx.runMutation(internal.crawls.clearTripExtract, {
+      tripId: args.tripId,
+    });
 
     let crawled = 0;
     let skipped = 0;
@@ -71,8 +73,7 @@ export const refreshCity = action({
           });
           continue;
         }
-        crawled += 1;
-        await ctx.runMutation(internal.crawls.addPage, {
+        const pageId = await ctx.runMutation(internal.crawls.addPage, {
           tripId: args.tripId,
           url: source.url,
           label: source.label,
@@ -80,6 +81,14 @@ export const refreshCity = action({
           markdown: markdown.slice(0, 12_000),
           skipReason: null,
         });
+        crawled += 1;
+        await ctx.runMutation(internal.trips.setCrawlState, {
+          tripId: args.tripId,
+          crawlStatus: "crawling",
+          status: "matching",
+          crawlError: null,
+        });
+        await ctx.runAction(internal.match.fromPage, { pageId });
       } catch (error) {
         skipped += 1;
         const message =
@@ -111,10 +120,12 @@ export const refreshCity = action({
     await ctx.runMutation(internal.trips.setCrawlState, {
       tripId: args.tripId,
       crawlStatus: "ready",
-      status: "matching",
+      status: "ready",
       crawlError: null,
+      matchNote:
+        "Live crawl. Candidates came from page text. Scores hide below 7. No invented venues.",
     });
-    await ctx.runAction(internal.match.fromCrawl, { tripId: args.tripId });
+    await ctx.runMutation(api.trips.draftFromMatches, { tripId: args.tripId });
     return { crawled, skipped, missingKey: false };
   },
 });
