@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:07:11Z
+- **Last updated:** 2026-09-02T01:11:31Z
 
 ## Log
 
@@ -24,3 +24,6 @@ Locked the match pipeline. Taste cards now store categories, vibe tags, price ba
 
 ### 2026-09-02 - 4a91235
 Locked the contest click-through to one seed. Taste is Lester’s Diner, Padrino’s Cuban Cuisine, Elbo Room, BREW Urban Cafe, and Island Water Sports. The inbox already holds “Austin this weekend”; opening it creates the Austin trip live. Demo crawl upserts 24 Diner, Continental Club, Habana Austin, and Epoch Coffee as each labeled page finishes, then an explicit miss: no grounded surf shop, nothing invented. Approve & send writes subject `Your usual, in Austin` with those four places plus the miss and no Sixth Street. Without AgentMail the outbound stays in-app (`convex/seedData.ts`, `convex/crawl.ts`, `convex/mail.ts`, `src/pages/Trip.tsx`). Convex features: mutations, actions, indexes, realtime queries.
+
+### 2026-09-02 - 5bfb4f4
+Finished the contest path compile. `fromPage` now annotates the handler, page markdown, extracted candidates, and score result so the earlier implicit-any loop is gone (`convex/match.ts`). Live Austin matching will only upsert the four allowlisted names. `tsc` passes for Convex and the Vite app. No `*.convex.site` URL — still not deployed, no Convex login here. `FIRECRAWL_API_KEY` is not a live `fc-` key on this local backend; Austin uses the labeled demo crawl until a real deployment sets one. AgentMail send stays gated: nothing goes out unless the owner taps Approve.
