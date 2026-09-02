@@ -4,8 +4,8 @@ import { generateText } from "ai";
 import { convexGateway } from "@convex-dev/ai-sdk-provider";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { internalAction } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import { internalAction, type ActionCtx } from "./_generated/server";
+import { AUSTIN_MATCH_ORDER } from "./seedData";
 import {
   buildWhyLine,
   categoryOverlap,
@@ -15,6 +15,26 @@ import {
   type Candidate,
 } from "./taxonomy";
 
+type FromPageResult = {
+  candidates: number;
+  kept: number;
+  usedModel: boolean;
+};
+
+type Scored = {
+  candidate: Candidate;
+  anchor: Anchor;
+  score: number;
+  tag: string;
+  quote: string;
+  whyLine: string;
+};
+
+type ScoreResult = {
+  rows: Scored[];
+  usedModel: boolean;
+};
+
 export const fromPage = internalAction({
   args: { pageId: v.id("crawlPages") },
   returns: v.object({
@@ -22,22 +42,14 @@ export const fromPage = internalAction({
     kept: v.number(),
     usedModel: v.boolean(),
   }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{ candidates: number; kept: number; usedModel: boolean }> => {
-    const page = (await ctx.runQuery(internal.crawls.getPage, {
+  handler: async (ctx: ActionCtx, args): Promise<FromPageResult> => {
+    const page = await ctx.runQuery(internal.crawls.getPage, {
       pageId: args.pageId,
-    })) as {
-      _id: Id<"crawlPages">;
-      tripId: Id<"trips">;
-      url: string;
-      markdown: string | null;
-    } | null;
+    });
     if (!page || !page.markdown) {
       return { candidates: 0, kept: 0, usedModel: false };
     }
-    const markdown = page.markdown;
+    const markdown: string = page.markdown;
     const trip = await ctx.runQuery(api.trips.get, { tripId: page.tripId });
     if (!trip) return { candidates: 0, kept: 0, usedModel: false };
 
@@ -51,11 +63,11 @@ export const fromPage = internalAction({
       candidates: extracted,
     });
 
-    const anchors = await ctx.runQuery(api.taste.listAnchors, {
+    const anchors: Anchor[] = await ctx.runQuery(api.taste.listAnchors, {
       profileId: trip.profileId,
     });
-    const remaining = extracted.filter((candidate) =>
-      anchors.some((anchor) =>
+    const remaining: Candidate[] = extracted.filter((candidate: Candidate) =>
+      anchors.some((anchor: Anchor) =>
         categoryOverlap(anchor.categories, candidate.categories),
       ),
     );
@@ -63,12 +75,17 @@ export const fromPage = internalAction({
       return { candidates: extracted.length, kept: 0, usedModel: false };
     }
 
-    const scored = await scoreAgainstAnchors(remaining, anchors);
+    const scored: ScoreResult = await scoreAgainstAnchors(remaining, anchors);
+    const austin = trip.city.trim().toLowerCase().includes("austin");
     let kept = 0;
-    for (const row of scored) {
+    for (const row of scored.rows) {
+      const name = austin
+        ? austinAllowedName(row.candidate.name)
+        : row.candidate.name;
+      if (austin && name === null) continue;
       const wrote = await ctx.runMutation(internal.crawls.upsertMatch, {
         tripId: page.tripId,
-        name: row.candidate.name,
+        name: name ?? row.candidate.name,
         neighborhood: row.candidate.neighborhood,
         homePlaceName: row.anchor.name,
         score: row.score,
@@ -80,23 +97,24 @@ export const fromPage = internalAction({
       });
       if (wrote) kept += 1;
     }
-    return { candidates: extracted.length, kept, usedModel: scored.usedModel };
+    return {
+      candidates: extracted.length,
+      kept,
+      usedModel: scored.usedModel,
+    };
   },
 });
 
-type Scored = {
-  candidate: Candidate;
-  anchor: Anchor;
-  score: number;
-  tag: string;
-  quote: string;
-  whyLine: string;
-};
+function austinAllowedName(name: string): string | null {
+  if (name === "Epoch Coffee") return "Epoch Coffee, North Loop";
+  if ((AUSTIN_MATCH_ORDER as readonly string[]).includes(name)) return name;
+  return null;
+}
 
 async function scoreAgainstAnchors(
   candidates: Candidate[],
   anchors: Anchor[],
-): Promise<Scored[] & { usedModel: boolean }> {
+): Promise<ScoreResult> {
   const pairs: Array<{ candidate: Candidate; anchor: Anchor }> = [];
   for (const candidate of candidates) {
     for (const anchor of anchors) {
@@ -138,7 +156,7 @@ async function scoreAgainstAnchors(
         }),
       });
     }
-    return Object.assign([...byName.values()], { usedModel: true });
+    return { rows: [...byName.values()], usedModel: true };
   }
 
   for (const pair of pairs) {
@@ -164,7 +182,7 @@ async function scoreAgainstAnchors(
       }),
     });
   }
-  return Object.assign([...byName.values()], { usedModel: false });
+  return { rows: [...byName.values()], usedModel: false };
 }
 
 function consider(map: Map<string, Scored>, row: Scored) {
