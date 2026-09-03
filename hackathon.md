@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T01:56:33Z
+- **Last updated:** 2026-09-02T23:59:00Z
 
 ## Log
 
@@ -39,3 +39,6 @@ Any town is a first-class crawl. `refreshCity` Firecrawl-searches dining/bar/cof
 
 ### 2026-09-02 - 2dc5a16
 Redeployed the any-town build to the existing Hackathon dev deployment. Backend and static frontend are live at https://elated-perch-355.convex.site. The served JS includes “Type any town” and “Hoboken, nj”; it does not include “Austin and Lisbon are wired in this build.” Did not print or commit secrets.
+
+### 2026-09-02 - 8eea37a
+Skinned the existing board as Napster circa 2000-2001. Dark gray window chrome, olive title bar, chunky beveled buttons, a Filename/Type/Host/Bitrate library list, and a status bar (`src/index.css`, `src/components/Shell.tsx`, Taste / Search / Transfer pages). Inbox (Austin this weekend), Fort Lauderdale usuals, add-a-place, CSV import, any-town crawl, cited matches, honest misses, and Approve & send are unchanged. Matcher and seed were not rewritten. Cloud redeploy did not run: `CONVEX_DEPLOY_KEY` is not in this session, so https://elated-perch-355.convex.site still serves the previous cream board. Local Vite is `http://127.0.0.1:43182`. Did not invent a key.

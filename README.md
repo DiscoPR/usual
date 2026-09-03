@@ -78,7 +78,7 @@ AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 
 ## Demo path (under 3 minutes)
 
-1. Taste — five seeded South Florida usuals, plus the inbound email already in the inbox.
+1. Library - five seeded South Florida usuals, plus the inbound email already in the inbox.
 2. Open **Austin this weekend**. The Austin trip is created live.
 3. Matches land one page at a time: 24 Diner, Epoch Coffee, Continental Club, Habana Austin, then the Island Water Sports miss.
 4. **Approve & send** — subject `Your usual, in Austin`. Four places + the miss. No Sixth Street.
