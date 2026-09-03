@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-03T00:40:00Z
+- **Last updated:** 2026-09-03T00:50:00Z
 
 ## Log
 
@@ -48,3 +48,6 @@ Redeployed the Napster skin to the existing Hackathon project on team Vital 5 (d
 
 ### 2026-09-03 - a7c646f
 Trip intake plus three grounded tiers. Who / occasion / multi-select likes / weather sit on Search and the trip board. Matching uses usuals plus intake boosts. Hide-below-7 is gone. Bands are Top (8-10), Middle (5-7), Maybe (3-4). Crawl searches more public lists and tries a second pass if fewer than 15 grounded hits. Austin labeled demo (no Firecrawl key) now streams 15 real list-page places, then the honest Island Water Sports miss. Redeployed to Hackathon / Vital 5 / elated-perch-355. GET https://elated-perch-355.convex.site returns title `Usual - Library` and bundle `index-BtMb7G-a.js` / `index-BA8HYdSe.css`. Served JS includes `Top 5`, `Get to know the trip`, and `Holy moly`. It does not include `hide below 7`. Product seed is unchanged. Did not create a new project. Did not print or commit secrets.
+
+### 2026-09-03 - 4d2b816
+File / View / Search / Transfer / Help are real Napster menus. File opens new trip, CSV import, usuals export, and reset demo. View browses your usuals, saved city lists, and other people's public list pages (real Eater / Visit / Time Out URLs, no invented venues). Search still lands on any-town crawl. Transfer copies or queues a list to a friend nick without sending email. Help is an in-app dialog for usuals, intake, crawl, then Top / Middle / Maybe. Redeployed to elated-perch-355. GET https://elated-perch-355.convex.site returns title `Usual - Library` and bundle `index-D6QjmiVv.js` / `index-CfaM05lg.css`. Served JS includes `Export usuals`, `Public libraries`, `Queue transfer`, and `How to use Usual`. Same Hackathon project. Did not print or commit secrets.
