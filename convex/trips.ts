@@ -3,6 +3,14 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { crawlRunStatus, tripOrigin, tripStatus } from "./schema";
 import { parseTripRequest } from "./sources";
 import { AUSTIN_MATCH_ORDER } from "./seedData";
+import {
+  intakeFromTrip,
+  intakeValidator,
+  occasionLabel,
+  partyLabel,
+  tierFromScore,
+  tripIntakeFields,
+} from "./intake";
 
 const tripSummary = v.object({
   _id: v.id("trips"),
@@ -28,7 +36,7 @@ export const list = query({
       const matches = await ctx.db
         .query("matches")
         .withIndex("by_trip", (q) => q.eq("tripId", trip._id))
-        .take(20);
+        .take(80);
       summaries.push({
         _id: trip._id,
         city: trip.city,
@@ -59,12 +67,35 @@ export const get = query({
       emailDraft: v.union(v.string(), v.null()),
       emailSubject: v.union(v.string(), v.null()),
       matchNote: v.union(v.string(), v.null()),
+      partyKind: v.union(
+        v.literal("solo"),
+        v.literal("couple"),
+        v.literal("friends"),
+        v.literal("family"),
+        v.literal("named_group"),
+      ),
+      partyName: v.string(),
+      occasion: v.union(
+        v.literal("birthday"),
+        v.literal("wedding"),
+        v.literal("bachelorette"),
+        v.literal("bachelor"),
+        v.literal("none"),
+      ),
+      groupLikes: v.array(v.string()),
+      weatherWant: v.union(
+        v.literal("hot"),
+        v.literal("mild"),
+        v.literal("rain-ok"),
+        v.literal("ac-indoor"),
+      ),
     }),
     v.null(),
   ),
   handler: async (ctx, args) => {
     const trip = await ctx.db.get(args.tripId);
     if (!trip) return null;
+    const intake = intakeFromTrip(trip);
     return {
       _id: trip._id,
       profileId: trip.profileId,
@@ -77,6 +108,7 @@ export const get = query({
       emailDraft: trip.emailDraft,
       emailSubject: trip.emailSubject,
       matchNote: trip.matchNote,
+      ...intake,
     };
   },
 });
@@ -86,6 +118,7 @@ export const create = mutation({
     profileId: v.id("profiles"),
     city: v.string(),
     dateLabel: v.string(),
+    intake: v.optional(intakeValidator),
   },
   returns: v.id("trips"),
   handler: async (ctx, args) => {
@@ -102,7 +135,22 @@ export const create = mutation({
       emailDraft: null,
       emailSubject: null,
       matchNote: null,
+      ...tripIntakeFields(args.intake),
     });
+  },
+});
+
+export const saveIntake = mutation({
+  args: {
+    tripId: v.id("trips"),
+    intake: intakeValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip) throw new Error("Trip not found.");
+    await ctx.db.patch(args.tripId, tripIntakeFields(args.intake));
+    return null;
   },
 });
 
@@ -127,6 +175,7 @@ export const createFromText = mutation({
       emailDraft: null,
       emailSubject: null,
       matchNote: null,
+      ...tripIntakeFields(undefined),
     });
   },
 });
@@ -140,11 +189,11 @@ export const draftFromMatches = mutation({
     const matches = await ctx.db
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(12);
+      .take(80);
     const hits = matches
       .filter(
         (match) =>
-          !match.isMiss && (match.score ?? 0) >= 7 && match.whyLine,
+          !match.isMiss && (match.score ?? 0) >= 3 && match.whyLine,
       )
       .sort((a, b) => {
         const ai = AUSTIN_MATCH_ORDER.indexOf(
@@ -160,18 +209,36 @@ export const draftFromMatches = mutation({
       });
     const misses = matches.filter((match) => match.isMiss);
     const austin = trip.city.trim().toLowerCase() === "austin";
+    const intake = intakeFromTrip(trip);
     const subject = austin
       ? "Your usual, in Austin"
       : `Your usual, in ${trip.city}`;
-    const lines = hits.map((match) => {
+    const byTier = {
+      top: hits.filter((match) => tierFromScore(match.score ?? 0) === "top").slice(0, 5),
+      middle: hits.filter((match) => tierFromScore(match.score ?? 0) === "middle").slice(0, 5),
+      maybe: hits.filter((match) => tierFromScore(match.score ?? 0) === "maybe").slice(0, 5),
+    };
+    const lineFor = (match: (typeof hits)[number]) => {
       const place =
         match.neighborhood && match.neighborhood !== "unknown"
           ? `${match.name} (${match.neighborhood})`
           : match.name;
-      return `• ${place} — ${match.whyLine}`;
-    });
+      return `• ${place}. ${match.whyLine}`;
+    };
+    const lines = [
+      `For ${partyLabel(intake)}, ${occasionLabel(intake)}.`,
+      "",
+      "Top 5",
+      ...byTier.top.map(lineFor),
+      "",
+      "Middle 5",
+      ...byTier.middle.map(lineFor),
+      "",
+      "Maybe",
+      ...byTier.maybe.map(lineFor),
+    ];
     const missLines = misses.map(
-      (match) => `${match.homePlaceName} — ${match.whyLine}`,
+      (match) => `${match.homePlaceName}. ${match.whyLine}`,
     );
     const body = [
       subject,

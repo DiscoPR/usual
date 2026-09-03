@@ -9,6 +9,10 @@ export const CATEGORIES = [
   "taco",
   "barbecue",
   "seafood",
+  "nightlife",
+  "park",
+  "trail",
+  "pool",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -41,6 +45,10 @@ const CATEGORY_WORDS: Record<Category, string[]> = {
   taco: ["taco", "taqueria", "migas", "masa"],
   barbecue: ["barbecue", "bbq", "brisket", "smoked"],
   seafood: ["seafood", "oyster", "fish", "raw bar"],
+  nightlife: ["nightlife", "nightclub", "late night", "honky-tonk", "honky tonk"],
+  park: ["park", "greenbelt", "zilker", "gardens"],
+  trail: ["trail", "hike", "hiking", "greenbelt", "boardwalk"],
+  pool: ["pool", "swimming hole", "springs", "lake", "barton springs"],
 };
 
 const SKIP_HEADINGS = [
@@ -150,7 +158,7 @@ export function extractCandidates(
     });
   }
 
-  return found.slice(0, 40);
+  return found.slice(0, 80);
 }
 
 export function buildWhyLine(input: {
@@ -160,7 +168,7 @@ export function buildWhyLine(input: {
   quote: string;
 }): string {
   const quote = input.quote.replace(/\s+/g, " ").trim();
-  return `you liked ${input.anchor} because ${input.tag} → ${input.candidate} because ${input.tag} — "${quote}"`;
+  return `you liked ${input.anchor} because ${input.tag}. ${input.candidate} because ${input.tag}. "${quote}"`;
 }
 
 export function pickQuote(snippet: string, proposed?: string): string | null {
@@ -191,6 +199,8 @@ function inferVibeTags(lower: string): string[] {
     ["not a chain", ["not a chain", "independent coffee"]],
     ["local", ["local", "two rooms"]],
     ["surf", ["surf", "boards", "wax"]],
+    ["water", ["swimming", "lake", "springs", "pool"]],
+    ["outdoors", ["park", "trail", "hike", "outdoors", "greenbelt"]],
     ["family", ["family", "since 1978"]],
     ["gear", ["gear", "boards", "wax", "surf"]],
     ["counter", ["counter", "stool", "counter stool"]],

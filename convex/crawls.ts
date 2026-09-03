@@ -19,7 +19,7 @@ export const listPages = query({
     const pages = await ctx.db
       .query("crawlPages")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(20);
+      .take(40);
     return pages.map((page) => ({
       _id: page._id,
       url: page.url,
@@ -90,7 +90,7 @@ export const addCandidates = internalMutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     let added = 0;
-    for (const candidate of args.candidates.slice(0, 40)) {
+    for (const candidate of args.candidates.slice(0, 80)) {
       const existing = await ctx.db
         .query("candidates")
         .withIndex("by_trip_name", (q) =>
@@ -116,17 +116,17 @@ export const clearTripExtract = internalMutation({
     const pages = await ctx.db
       .query("crawlPages")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(40);
+      .take(80);
     for (const page of pages) await ctx.db.delete(page._id);
     const candidates = await ctx.db
       .query("candidates")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(80);
+      .take(160);
     for (const row of candidates) await ctx.db.delete(row._id);
     const matches = await ctx.db
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(40);
+      .take(80);
     for (const row of matches) await ctx.db.delete(row._id);
     return null;
   },
@@ -148,18 +148,24 @@ export const listMatches = query({
       sourceUrl: v.union(v.string(), v.null()),
       grounded: v.boolean(),
       isMiss: v.boolean(),
+      tier: v.union(
+        v.literal("top"),
+        v.literal("middle"),
+        v.literal("maybe"),
+        v.literal("miss"),
+      ),
     }),
   ),
   handler: async (ctx, args) => {
     const rows = await ctx.db
       .query("matches")
       .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(40);
+      .take(80);
     const visible = rows.filter((row) => {
       if (row.isMiss) return true;
       return (
         (row.source === "crawl" || row.source === "demo") &&
-        (row.score ?? 0) >= 7 &&
+        (row.score ?? 0) >= 3 &&
         Boolean(row.whyLine) &&
         row.grounded
       );
@@ -178,8 +184,21 @@ export const listMatches = query({
         }
         return (b.score ?? 0) - (a.score ?? 0);
       });
+    const top = hits.filter((row) => (row.score ?? 0) >= 8).slice(0, 5);
+    const middle = hits
+      .filter((row) => (row.score ?? 0) >= 5 && (row.score ?? 0) < 8)
+      .slice(0, 5);
+    const maybe = hits
+      .filter((row) => (row.score ?? 0) >= 3 && (row.score ?? 0) < 5)
+      .slice(0, 5);
     const misses = visible.filter((row) => row.isMiss);
-    return [...hits, ...misses].slice(0, 16).map((row) => ({
+    const ranked = [
+      ...top.map((row) => ({ ...row, tier: "top" as const })),
+      ...middle.map((row) => ({ ...row, tier: "middle" as const })),
+      ...maybe.map((row) => ({ ...row, tier: "maybe" as const })),
+      ...misses.map((row) => ({ ...row, tier: "miss" as const })),
+    ];
+    return ranked.map((row) => ({
       _id: row._id,
       name: row.name,
       neighborhood: row.neighborhood,
@@ -192,7 +211,22 @@ export const listMatches = query({
       sourceUrl: row.sourceUrl,
       grounded: row.grounded,
       isMiss: row.isMiss ?? false,
+      tier: row.tier,
     }));
+  },
+});
+
+export const countGrounded = query({
+  args: { tripId: v.id("trips") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("matches")
+      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
+      .take(80);
+    return rows.filter(
+      (row) => !row.isMiss && row.grounded && (row.score ?? 0) >= 3,
+    ).length;
   },
 });
 
@@ -212,7 +246,7 @@ export const upsertMatch = internalMutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    if (!args.isMiss && args.score < 7) return false;
+    if (!args.isMiss && args.score < 3) return false;
     const existing = await ctx.db
       .query("matches")
       .withIndex("by_trip_name", (q) =>

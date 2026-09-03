@@ -13,6 +13,13 @@ import {
   type Anchor,
   type Candidate,
 } from "./taxonomy";
+import {
+  applyIntakeBoost,
+  eligibleCandidate,
+  intakeFromTrip,
+  intakeWhyBit,
+  type Intake,
+} from "./intake";
 
 type FromPageResult = {
   candidates: number;
@@ -65,16 +72,19 @@ export const fromPage = internalAction({
     const anchors: Anchor[] = await ctx.runQuery(api.taste.listAnchors, {
       profileId: trip.profileId,
     });
+    const intake: Intake = intakeFromTrip(trip);
     const remaining: Candidate[] = extracted.filter((candidate: Candidate) =>
-      anchors.some((anchor: Anchor) =>
-        categoryOverlap(anchor.categories, candidate.categories),
-      ),
+      eligibleCandidate(candidate, anchors, intake),
     );
     if (remaining.length === 0) {
       return { candidates: extracted.length, kept: 0, usedModel: false };
     }
 
-    const scored: ScoreResult = await scoreAgainstAnchors(remaining, anchors);
+    const scored: ScoreResult = await scoreAgainstAnchors(
+      remaining,
+      anchors,
+      intake,
+    );
     let kept = 0;
     for (const row of scored.rows) {
       const wrote = await ctx.runMutation(internal.crawls.upsertMatch, {
@@ -102,13 +112,17 @@ export const fromPage = internalAction({
 async function scoreAgainstAnchors(
   candidates: Candidate[],
   anchors: Anchor[],
+  intake: Intake,
 ): Promise<ScoreResult> {
   const pairs: Array<{ candidate: Candidate; anchor: Anchor }> = [];
   for (const candidate of candidates) {
-    for (const anchor of anchors) {
-      if (categoryOverlap(anchor.categories, candidate.categories)) {
-        pairs.push({ candidate, anchor });
-      }
+    const overlapping = anchors.filter((anchor) =>
+      categoryOverlap(anchor.categories, candidate.categories),
+    );
+    if (overlapping.length > 0) {
+      for (const anchor of overlapping) pairs.push({ candidate, anchor });
+    } else if (anchors[0]) {
+      pairs.push({ candidate, anchor: anchors[0] });
     }
   }
 
@@ -129,19 +143,23 @@ async function scoreAgainstAnchors(
         hit?.tag && pair.anchor.vibeTags.includes(hit.tag)
           ? hit.tag
           : sharedTag(pair.anchor, pair.candidate);
-      const score = clampScore(hit?.score ?? 0);
+      const score = applyIntakeBoost(
+        clampScore(hit?.score ?? 0),
+        pair.candidate,
+        intake,
+      );
       consider(byName, {
         candidate: pair.candidate,
         anchor: pair.anchor,
         score,
         tag,
         quote,
-        whyLine: buildWhyLine({
+        whyLine: `${buildWhyLine({
           anchor: pair.anchor.name,
           tag,
           candidate: pair.candidate.name,
           quote,
-        }),
+        })} ${intakeWhyBit(intake)}`,
       });
     }
     return { rows: [...byName.values()], usedModel: true };
@@ -155,26 +173,30 @@ async function scoreAgainstAnchors(
     const tagHit = pair.anchor.vibeTags.some((item) =>
       snippetLower.includes(item.toLowerCase()),
     );
-    const score = tagHit ? 7 : 0;
+    const overlap = categoryOverlap(
+      pair.anchor.categories,
+      pair.candidate.categories,
+    );
+    const score = applyIntakeBoost(tagHit ? 7 : overlap ? 5 : 3, pair.candidate, intake);
     consider(byName, {
       candidate: pair.candidate,
       anchor: pair.anchor,
       score,
       tag,
       quote,
-      whyLine: buildWhyLine({
+      whyLine: `${buildWhyLine({
         anchor: pair.anchor.name,
         tag,
         candidate: pair.candidate.name,
         quote,
-      }),
+      })} ${intakeWhyBit(intake)}`,
     });
   }
   return { rows: [...byName.values()], usedModel: false };
 }
 
 function consider(map: Map<string, Scored>, row: Scored) {
-  if (row.score < 7) return;
+  if (row.score < 3) return;
   const current = map.get(row.candidate.name);
   if (!current || row.score > current.score) {
     map.set(row.candidate.name, row);

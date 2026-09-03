@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { InboxCard } from "../components/InboxCard";
+import { IntakeForm } from "../components/IntakeForm";
+import { DEFAULT_INTAKE, type Intake } from "../lib/intake";
 
 export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const trips = useQuery(api.trips.list, { profileId });
@@ -14,6 +16,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const [city, setCity] = useState("Hoboken, nj");
   const [dateLabel, setDateLabel] = useState("this weekend");
   const [inbound, setInbound] = useState("Hoboken, nj this weekend");
+  const [intake, setIntake] = useState<Intake>(DEFAULT_INTAKE);
 
   if (trips === undefined) {
     return <p className="empty">Loading search...</p>;
@@ -21,7 +24,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
 
   async function onCreate(event: React.FormEvent) {
     event.preventDefault();
-    const tripId = await create({ profileId, city, dateLabel });
+    const tripId = await create({ profileId, city, dateLabel, intake });
     navigate(`/trip/${tripId}`);
   }
 
@@ -41,7 +44,8 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
         </div>
         <p className="pane-note pane-pad">
           Type any town. Usual searches public dining lists for that city, then
-          scores them against your usuals. Hide below 7. Never invents a venue.
+          scores them against your usuals plus this trip's intake. Three tiers.
+          Never invents a venue.
         </p>
         <form onSubmit={(event) => void onCreate(event)} className="form-stack">
           <label>
@@ -62,6 +66,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
               placeholder="this weekend"
             />
           </label>
+          <IntakeForm value={intake} onChange={setIntake} />
           <button type="submit" className="btn-go">
             Search
           </button>

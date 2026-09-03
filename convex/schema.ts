@@ -93,6 +93,34 @@ export default defineSchema({
     emailDraft: v.union(v.string(), v.null()),
     emailSubject: v.union(v.string(), v.null()),
     matchNote: v.union(v.string(), v.null()),
+    partyKind: v.optional(
+      v.union(
+        v.literal("solo"),
+        v.literal("couple"),
+        v.literal("friends"),
+        v.literal("family"),
+        v.literal("named_group"),
+      ),
+    ),
+    partyName: v.optional(v.string()),
+    occasion: v.optional(
+      v.union(
+        v.literal("birthday"),
+        v.literal("wedding"),
+        v.literal("bachelorette"),
+        v.literal("bachelor"),
+        v.literal("none"),
+      ),
+    ),
+    groupLikes: v.optional(v.array(v.string())),
+    weatherWant: v.optional(
+      v.union(
+        v.literal("hot"),
+        v.literal("mild"),
+        v.literal("rain-ok"),
+        v.literal("ac-indoor"),
+      ),
+    ),
   })
     .index("by_profile", ["profileId"])
     .index("by_profile_city", ["profileId", "city"]),

@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { IntakeForm } from "../components/IntakeForm";
+import {
+  DEFAULT_INTAKE,
+  type GroupLike,
+  type Intake,
+} from "../lib/intake";
 
 const autoStarted = new Set<string>();
 
@@ -17,10 +23,12 @@ export function Trip() {
   const crawl = useAction(api.crawl.refreshCity);
   const draft = useMutation(api.trips.draftFromMatches);
   const saveDraft = useMutation(api.trips.saveDraft);
+  const saveIntake = useMutation(api.trips.saveIntake);
   const send = useMutation(api.mail.sendTrip);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [to, setTo] = useState("");
+  const [intake, setIntake] = useState<Intake>(DEFAULT_INTAKE);
 
   useEffect(() => {
     if (!trip) return;
@@ -47,6 +55,31 @@ export function Trip() {
       .finally(() => setBusy(null));
   }, [trip, crawl]);
 
+  useEffect(() => {
+    if (!trip) return;
+    setIntake({
+      partyKind: trip.partyKind,
+      partyName: trip.partyName,
+      occasion: trip.occasion,
+      groupLikes: trip.groupLikes.filter((like): like is GroupLike =>
+        DEFAULT_INTAKE.groupLikes.includes(like as GroupLike) ||
+        [
+          "drinkers",
+          "hikers",
+          "outdoors",
+          "indoors",
+          "food-first",
+          "live-music",
+          "coffee",
+          "beach-water",
+          "nightlife",
+          "chill",
+        ].includes(like),
+      ),
+      weatherWant: trip.weatherWant,
+    });
+  }, [trip?._id]);
+
   if (!id) return <p className="empty">Missing trip.</p>;
   if (trip === undefined || matches === undefined || pages === undefined) {
     return <p className="empty">Opening trip...</p>;
@@ -67,6 +100,7 @@ export function Trip() {
     setBusy("crawl");
     setNotice(null);
     try {
+      await saveIntake({ tripId: resolvedId, intake });
       const result = await crawl({ tripId: resolvedId });
       if (result.demo) {
         setNotice("Labeled demo crawl. Matches arrived page by page.");
@@ -109,8 +143,15 @@ export function Trip() {
   }
 
   const outbound = (thread ?? []).filter((row) => row.direction === "outbound");
-  const hits = matches.filter((match) => !match.isMiss);
+  const top = matches.filter((match) => match.tier === "top");
+  const middle = matches.filter((match) => match.tier === "middle");
+  const maybe = matches.filter((match) => match.tier === "maybe");
+  const hits = [...top, ...middle, ...maybe];
   const misses = matches.filter((match) => match.isMiss);
+  const shortfall =
+    hits.length < 15 && hits.length > 0
+      ? `only ${hits.length} grounded places in this crawl`
+      : null;
 
   return (
     <>
@@ -129,6 +170,11 @@ export function Trip() {
         </section>
       ) : null}
       {trip.crawlError ? <p className="err">{trip.crawlError}</p> : null}
+
+      <section className="pane">
+        <div className="section-head">Get to know the trip</div>
+        <IntakeForm value={intake} onChange={setIntake} />
+      </section>
 
       <div className="xfer-row">
         <button
@@ -153,57 +199,33 @@ export function Trip() {
       </p>
       {notice ? <p className="ok">{notice}</p> : null}
 
-      <section className="pane">
-        <div className="section-head">
-          Download / matches
-          <span className="count">
-            {hits.length} hits · hide below 7
-          </span>
-        </div>
-        {hits.length === 0 ? (
-          <p className="empty">
-            {crawling
-              ? "Waiting on the first page..."
-              : "No matches yet. Search public lists for this town."}
-          </p>
-        ) : (
-          <div className="lib">
-            <div className="lib-head">
-              <span>Filename</span>
-              <span>Type</span>
-              <span>Host</span>
-              <span>Bitrate</span>
-            </div>
-            {hits.map((match) => (
-              <div key={match._id} className="lib-row">
-                <span className="lib-name">{match.name}</span>
-                <span>{match.score}/10</span>
-                <span>{match.neighborhood || trip.city}</span>
-                <span>{match.source === "demo" ? "demo" : "crawl"}</span>
-                <span className="lib-why">
-                  Matched: {match.homePlaceName}
-                  {match.vibeTag ? ` · ${match.vibeTag}` : ""}
-                </span>
-                <span className="lib-why">{match.whyLine}</span>
-                {match.quote ? (
-                  <span className="lib-quote">"{match.quote}"</span>
-                ) : null}
-                {match.sourceUrl ? (
-                  <span className="lib-skip">
-                    <a
-                      href={match.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {match.sourceUrl}
-                    </a>
-                  </span>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {shortfall ? <p className="hint">{shortfall}</p> : null}
+
+      <TierList
+        title="Top 5"
+        feel="Holy moly. Almost identical to your usuals."
+        rows={top}
+        empty={
+          crawling
+            ? "Waiting on the first page..."
+            : "No top-tier hits yet. Crawl public lists for this town."
+        }
+        city={trip.city}
+      />
+      <TierList
+        title="Middle 5"
+        feel="You should like it. Real overlap, not a copy."
+        rows={middle}
+        empty="No middle-tier hits in this crawl."
+        city={trip.city}
+      />
+      <TierList
+        title="Maybe"
+        feel="One or two overlapping things. Still a real place with a reason."
+        rows={maybe}
+        empty="No thin-overlap hits in this crawl."
+        city={trip.city}
+      />
 
       {misses.length > 0 ? (
         <section className="pane">
@@ -326,5 +348,75 @@ export function Trip() {
         </section>
       ) : null}
     </>
+  );
+}
+
+function TierList({
+  title,
+  feel,
+  rows,
+  empty,
+  city,
+}: {
+  title: string;
+  feel: string;
+  rows: Array<{
+    _id: string;
+    name: string;
+    neighborhood: string;
+    homePlaceName: string;
+    score: number;
+    whyLine: string;
+    vibeTag: string;
+    quote: string;
+    source: string;
+    sourceUrl: string | null;
+  }>;
+  empty: string;
+  city: string;
+}) {
+  return (
+    <section className="pane">
+      <div className="section-head">
+        {title}
+        <span className="count">{rows.length}</span>
+      </div>
+      <p className="pane-note pane-pad">{feel}</p>
+      {rows.length === 0 ? (
+        <p className="empty">{empty}</p>
+      ) : (
+        <div className="lib">
+          <div className="lib-head">
+            <span>Filename</span>
+            <span>Type</span>
+            <span>Host</span>
+            <span>Bitrate</span>
+          </div>
+          {rows.map((match) => (
+            <div key={match._id} className="lib-row">
+              <span className="lib-name">{match.name}</span>
+              <span>{match.score}/10</span>
+              <span>{match.neighborhood || city}</span>
+              <span>{match.source === "demo" ? "demo" : "crawl"}</span>
+              <span className="lib-why">
+                Matched: {match.homePlaceName}
+                {match.vibeTag ? ` · ${match.vibeTag}` : ""}
+              </span>
+              <span className="lib-why">{match.whyLine}</span>
+              {match.quote ? (
+                <span className="lib-quote">"{match.quote}"</span>
+              ) : null}
+              {match.sourceUrl ? (
+                <span className="lib-skip">
+                  <a href={match.sourceUrl} target="_blank" rel="noreferrer">
+                    {match.sourceUrl}
+                  </a>
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

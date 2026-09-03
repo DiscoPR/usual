@@ -9,6 +9,7 @@ import {
 import { messageDirection, messageStatus } from "./schema";
 import { DEMO_SLUG } from "./seedData";
 import { parseTripRequest } from "./sources";
+import { AUSTIN_EMAIL_INTAKE, tripIntakeFields } from "./intake";
 
 const agentmail = new AgentMail(components.agentmail, {
   onMessageReceived: internal.mail.onMessageReceived,
@@ -91,6 +92,9 @@ export const acceptInbound = mutation({
       emailDraft: null,
       emailSubject: null,
       matchNote: null,
+      ...tripIntakeFields(
+        city.toLowerCase().includes("austin") ? AUSTIN_EMAIL_INTAKE : undefined,
+      ),
     });
     await ctx.db.patch(message._id, {
       tripId,
@@ -150,6 +154,11 @@ export const simulateInbound = mutation({
       emailDraft: null,
       emailSubject: null,
       matchNote: null,
+      ...tripIntakeFields(
+        parsed.city.toLowerCase().includes("austin")
+          ? AUSTIN_EMAIL_INTAKE
+          : undefined,
+      ),
     });
     await ctx.db.insert("messages", {
       tripId,
@@ -194,6 +203,11 @@ export const onMessageReceived = internalMutation({
       emailDraft: null,
       emailSubject: null,
       matchNote: null,
+      ...tripIntakeFields(
+        parsed.city.toLowerCase().includes("austin")
+          ? AUSTIN_EMAIL_INTAKE
+          : undefined,
+      ),
     });
     await ctx.db.insert("messages", {
       tripId,

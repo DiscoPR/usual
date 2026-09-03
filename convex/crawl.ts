@@ -16,6 +16,13 @@ import {
   demoWhy,
 } from "./seedData";
 import { extractCandidates } from "./taxonomy";
+import {
+  AUSTIN_EMAIL_INTAKE,
+  intakeFromTrip,
+  intakeWhyBit,
+  searchQueriesForCity,
+  type Intake,
+} from "./intake";
 
 const firecrawl = new FirecrawlClient(components.firecrawl);
 
@@ -65,14 +72,18 @@ export const refreshCity = action({
       crawlStatus: "crawling",
       status: "crawling",
       crawlError: null,
-      matchNote: `Searching public lists for ${trip.city}…`,
+      matchNote: `Searching public lists for ${trip.city}.`,
     });
     await ctx.runMutation(internal.crawls.clearTripExtract, {
       tripId: args.tripId,
     });
 
-    const discovered = await discoverListPages(ctx, trip.city);
-    const sources = mergeSources(discovered, sourcesForCity(trip.city));
+    const intake = intakeFromTrip(trip);
+    const discovered = await discoverListPages(ctx, trip.city, intake);
+    const sources = mergeSources(discovered, sourcesForCity(trip.city)).slice(
+      0,
+      12,
+    );
     if (sources.length === 0) {
       await ctx.runMutation(internal.trips.setCrawlState, {
         tripId: args.tripId,
@@ -90,7 +101,27 @@ export const refreshCity = action({
       crawlError: null,
       matchNote: `Crawling ${sources.length} public list page(s) for ${trip.city}.`,
     });
-    const { crawled, skipped } = await scrapeSources(ctx, args.tripId, sources);
+    let { crawled, skipped } = await scrapeSources(ctx, args.tripId, sources);
+    let grounded = await ctx.runQuery(api.crawls.countGrounded, {
+      tripId: args.tripId,
+    });
+    if (grounded < 15) {
+      const extra = await discoverListPages(ctx, trip.city, intake, {
+        already: sources.map((source) => source.url),
+        extraPass: true,
+      });
+      const more = mergeSources(extra, []).filter(
+        (source) => !sources.some((row) => row.url === source.url),
+      );
+      if (more.length > 0) {
+        const second = await scrapeSources(ctx, args.tripId, more.slice(0, 6));
+        crawled += second.crawled;
+        skipped += second.skipped;
+        grounded = await ctx.runQuery(api.crawls.countGrounded, {
+          tripId: args.tripId,
+        });
+      }
+    }
 
     if (crawled === 0) {
       await ctx.runMutation(internal.trips.setCrawlState, {
@@ -108,7 +139,9 @@ export const refreshCity = action({
       status: "ready",
       crawlError: null,
       matchNote:
-        "Live crawl. Candidates came from page text. Scores hide below 7. No invented venues.",
+        grounded >= 15
+          ? `Live crawl. ${grounded} grounded places from public lists, scored into Top / Middle / Maybe. No invented venues.`
+          : `only ${grounded} grounded places in this crawl. Tiers show what the lists actually had. No invented venues.`,
     });
     await ctx.runMutation(api.trips.draftFromMatches, { tripId: args.tripId });
     return { crawled, skipped, missingKey: false, demo: false };
@@ -181,21 +214,19 @@ async function scrapeSources(
 async function discoverListPages(
   ctx: ActionCtx,
   city: string,
+  intake: Intake,
+  opts?: { already?: string[]; extraPass?: boolean },
 ): Promise<CitySource[]> {
-  const queries = [
-    `${city} Eater map restaurants bars coffee`,
-    `${city} Time Out restaurants bars coffee`,
-    `${city} visitor bureau official dining restaurants`,
-    `${city} best restaurants bars coffee local list`,
-  ];
+  const queries = searchQueriesForCity(city, intake);
   const found: CitySource[] = [];
-  const seen = new Set<string>();
+  const seen = new Set<string>(opts?.already ?? []);
+  const cap = opts?.extraPass ? 12 : 10;
 
   for (const query of queries) {
-    if (found.length >= 5) break;
+    if (found.length >= cap) break;
     try {
       const result = await firecrawl.search(ctx, query, {
-        limit: 5,
+        limit: 6,
         ignoreInvalidURLs: true,
         excludeDomains: [
           "google.com",
@@ -215,7 +246,7 @@ async function discoverListPages(
             ? row.title.trim().slice(0, 80)
             : labelFromUrl(clean);
         found.push({ url: clean, label: title });
-        if (found.length >= 5) break;
+        if (found.length >= cap) break;
       }
     } catch {
       // Try the next query. Empty search is not an invented list.
@@ -224,7 +255,7 @@ async function discoverListPages(
 
   return found
     .sort((a, b) => preferList(a.url) - preferList(b.url))
-    .slice(0, 5);
+    .slice(0, cap);
 }
 
 function pickSearchUrl(row: { url?: unknown; [key: string]: unknown }): string {
@@ -311,7 +342,7 @@ async function runDemoCrawl(ctx: ActionCtx, tripId: Id<"trips">) {
         neighborhood: match.neighborhood,
         homePlaceName: match.homePlaceName,
         score: match.score,
-        whyLine: demoWhy(match),
+        whyLine: `${demoWhy(match)} ${intakeWhyBit(AUSTIN_EMAIL_INTAKE)}`,
         vibeTag: match.vibeTag,
         quote: match.quote,
         source: "demo",
@@ -341,7 +372,7 @@ async function runDemoCrawl(ctx: ActionCtx, tripId: Id<"trips">) {
     status: "ready",
     crawlError: null,
     matchNote:
-      "Labeled demo. Four grounded matches from the crawl pages. One explicit miss. Nothing invented.",
+      "Labeled demo. Fifteen grounded places from public list pages, in three tiers. One explicit miss (no surf shop). Nothing invented.",
   });
   await ctx.runMutation(api.trips.draftFromMatches, { tripId });
 }

@@ -353,6 +353,24 @@ a {
   min-width: 160px;
 }
 
+.choice-set {
+  margin: 0;
+  padding: 6px;
+  border: 1px solid #808080;
+  background: #dcdcdc;
+}
+
+.choice-set legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .lib {
   overflow-x: auto;
 }

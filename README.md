@@ -74,13 +74,13 @@ AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 
 1. **Taste row** - name, city, optional URL, one-line why. Why (or a Firecrawl of the URL) fills `categories[]`, `vibeTags[]`, `priceBand`. The profile is the rollup of 5–12 anchors.
 2. **City crawl** — Firecrawl search for public dining/bar/coffee lists in the typed town. Only URLs the search returned are scraped (optional hardcoded boosts merge and dedupe). Candidates come from markdown only, each with a source URL and a quoted snippet. Names not in the crawl text are dropped. If search and boosts are empty: `No public lists found for {city}`.
-3. **Match** — hard filter: candidate category must overlap an anchor category. A Convex action scores each remaining pair 1–10 (OpenAI, or a rule score if no model). Quote must come from the snippet. Why line: `you liked {anchor} because {tag} → {candidate} because {tag} — "{quote}"`. Best score per candidate. Hide below 7. Results upsert as each page finishes so the board moves live. Invented venues are never shown. An anchor with no grounded candidate is an explicit miss.
+3. **Match** - hard filter: candidate category overlaps an anchor, or the trip intake (parks for hikers, bars for drinkers). A Convex action scores each pair 1-10, then intake boosts nightlife, trails, indoor rooms, and so on. Quote comes from the snippet. Why line names the usual and the trip. Tiers: Top (8-10), Middle (5-7), Maybe (3-4). Prefer 15 grounded places. If the crawl is thin, show the honest shortfall. Invented venues are never shown. An anchor with no grounded candidate (like a surf shop in Austin) is an explicit miss.
 
 ## Demo path (under 3 minutes)
 
 1. Library - five seeded South Florida usuals, plus the inbound email already in the inbox.
 2. Open **Austin this weekend**. The Austin trip is created live.
-3. Matches land one page at a time: 24 Diner, Epoch Coffee, Continental Club, Habana Austin, then the Island Water Sports miss.
+3. Matches land in three tiers (Top 5, Middle 5, Maybe). Austin labeled demo fills 15 grounded places from public list pages, then the Island Water Sports miss if there is still no surf shop.
 4. **Approve & send** — subject `Your usual, in Austin`. Four places + the miss. No Sixth Street.
 
 ## Public sources

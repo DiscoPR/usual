@@ -20,6 +20,18 @@ const AUSTIN: CitySource[] = [
     url: "https://epochcoffee.com/",
     label: "Epoch Coffee",
   },
+  {
+    url: "https://austin.eater.com/maps/best-dive-bars-austin",
+    label: "Eater Austin dive bars",
+  },
+  {
+    url: "https://austin.eater.com/maps/best-coffee-austin-cafes-espressos-lattes",
+    label: "Eater Austin coffee map",
+  },
+  {
+    url: "https://www.austintexas.org/things-to-do/outdoors/",
+    label: "Visit Austin outdoors",
+  },
 ];
 
 const LISBON: CitySource[] = [
@@ -36,11 +48,11 @@ const LISBON: CitySource[] = [
 const HOBOKEN: CitySource[] = [
   {
     url: "https://www.thejillbiggsgroup.com/blog/best-restaurants-hoboken-nj-2025-2026",
-    label: "Jill Biggs — best restaurants Hoboken",
+    label: "Jill Biggs, best restaurants Hoboken",
   },
   {
     url: "https://www.visithudson.org/restaurants/hoboken/",
-    label: "Visit Hudson — Hoboken restaurants",
+    label: "Visit Hudson, Hoboken restaurants",
   },
   {
     url: "https://www.visithudson.org/restaurants/",
@@ -48,7 +60,7 @@ const HOBOKEN: CitySource[] = [
   },
   {
     url: "https://ny.eater.com/maps/best-jersey-city-restaurants",
-    label: "Eater — best Jersey City restaurants",
+    label: "Eater, best Jersey City restaurants",
   },
 ];
 
