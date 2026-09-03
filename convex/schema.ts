@@ -165,6 +165,15 @@ export default defineSchema({
     .index("by_trip", ["tripId"])
     .index("by_trip_name", ["tripId", "name"]),
 
+  shares: defineTable({
+    profileId: v.id("profiles"),
+    kind: v.union(v.literal("usuals"), v.literal("trip")),
+    toLabel: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    tripId: v.union(v.id("trips"), v.null()),
+  }).index("by_profile", ["profileId"]),
+
   messages: defineTable({
     tripId: v.union(v.id("trips"), v.null()),
     direction: messageDirection,

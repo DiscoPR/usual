@@ -18,6 +18,7 @@ import type * as match from "../match.js";
 import type * as profile from "../profile.js";
 import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
+import type * as shares from "../shares.js";
 import type * as sources from "../sources.js";
 import type * as taste from "../taste.js";
 import type * as taxonomy from "../taxonomy.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   profile: typeof profile;
   seed: typeof seed;
   seedData: typeof seedData;
+  shares: typeof shares;
   sources: typeof sources;
   taste: typeof taste;
   taxonomy: typeof taxonomy;

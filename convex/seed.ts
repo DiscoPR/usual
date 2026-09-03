@@ -19,6 +19,7 @@ export const wipe = internalMutation({
       "crawlPages",
       "candidates",
       "matches",
+      "shares",
       "messages",
     ] as const;
     for (const table of tables) {
@@ -145,6 +146,7 @@ export const ensureDemo = mutation({
       "crawlPages",
       "candidates",
       "matches",
+      "shares",
       "messages",
     ] as const;
     for (const table of tables) {
@@ -208,6 +210,7 @@ export const resetDemo = mutation({
       "crawlPages",
       "candidates",
       "matches",
+      "shares",
       "messages",
     ] as const;
     for (const table of tables) {

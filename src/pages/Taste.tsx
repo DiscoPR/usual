@@ -1,5 +1,6 @@
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { InboxCard } from "../components/InboxCard";
@@ -20,6 +21,12 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
   const [csv, setCsv] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState<string | null>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash !== "#import") return;
+    document.getElementById("import")?.scrollIntoView({ block: "start" });
+  }, [location.hash]);
 
   async function onAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -187,7 +194,7 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
         </form>
       </section>
 
-      <section className="pane">
+      <section className="pane" id="import">
         <div className="section-head">Import / CSV</div>
         <div className="form-stack">
           <p className="hint">

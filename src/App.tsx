@@ -5,7 +5,9 @@ import { api } from "../convex/_generated/api";
 import { BootWindow, Shell } from "./components/Shell";
 import { Board } from "./pages/Board";
 import { Taste } from "./pages/Taste";
+import { Transfer } from "./pages/Transfer";
 import { Trip } from "./pages/Trip";
+import { ViewLibraries } from "./pages/ViewLibraries";
 
 export default function App() {
   const profile = useQuery(api.profile.getDemo);
@@ -35,6 +37,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Taste profileId={profile._id} />} />
         <Route path="/trips" element={<Board profileId={profile._id} />} />
+        <Route path="/view" element={<ViewLibraries profileId={profile._id} />} />
+        <Route path="/transfer" element={<Transfer profileId={profile._id} />} />
         <Route path="/trip/:tripId" element={<Trip />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

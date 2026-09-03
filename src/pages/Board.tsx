@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { InboxCard } from "../components/InboxCard";
@@ -13,10 +13,16 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const create = useMutation(api.trips.create);
   const simulate = useMutation(api.mail.simulateInbound);
   const navigate = useNavigate();
-  const [city, setCity] = useState("Hoboken, nj");
+  const [params] = useSearchParams();
+  const [city, setCity] = useState(params.get("city") || "Hoboken, nj");
   const [dateLabel, setDateLabel] = useState("this weekend");
   const [inbound, setInbound] = useState("Hoboken, nj this weekend");
   const [intake, setIntake] = useState<Intake>(DEFAULT_INTAKE);
+
+  useEffect(() => {
+    const next = params.get("city");
+    if (next) setCity(next);
+  }, [params]);
 
   if (trips === undefined) {
     return <p className="empty">Loading search...</p>;
