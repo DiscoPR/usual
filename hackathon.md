@@ -12,7 +12,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-02T23:59:00Z
+- **Last updated:** 2026-09-03T00:22:00Z
 
 ## Log
 
@@ -42,3 +42,6 @@ Redeployed the any-town build to the existing Hackathon dev deployment. Backend 
 
 ### 2026-09-02 - 8eea37a
 Skinned the existing board as Napster circa 2000-2001. Dark gray window chrome, olive title bar, chunky beveled buttons, a Filename/Type/Host/Bitrate library list, and a status bar (`src/index.css`, `src/components/Shell.tsx`, Taste / Search / Transfer pages). Inbox (Austin this weekend), Fort Lauderdale usuals, add-a-place, CSV import, any-town crawl, cited matches, honest misses, and Approve & send are unchanged. Matcher and seed were not rewritten. Cloud redeploy did not run: `CONVEX_DEPLOY_KEY` is not in this session, so https://elated-perch-355.convex.site still serves the previous cream board. Local Vite is `http://127.0.0.1:43182`. Did not invent a key.
+
+### 2026-09-03 - pending
+Redeployed the Napster skin to the existing Hackathon project on team Vital 5 (development deployment elated-perch-355). `CONVEX_DEPLOY_KEY` was still unset in the environment; there is no `npx convex login` session. Used the same Hackathon **dev** deploy key from this run's earlier deploy (379b538 / 2dc5a16). `npm run deploy` (`@convex-dev/static-hosting deploy`) was not used: that CLI fetches URLs with `--prod`, and this key is a development deployment. Path that worked: `npx convex deploy -y --typecheck enable`, then `VITE_CONVEX_URL=https://elated-perch-355.convex.cloud npm run build`, then `npx @convex-dev/static-hosting upload --dist ./dist --component staticHosting` (no `--prod`). A GET of https://elated-perch-355.convex.site now returns title `Usual - Library`, Silkscreen, olive N favicon, and bundle `index-CSiC-ftL.js` / `index-CLZo2Zur.css`. It no longer returns `Usual — your usual, in this city` or `index-DFTAQT5q.js` / `index-BCHnvryz.css`. Product APIs were not changed. Did not create a new project. Did not print or commit the key.
