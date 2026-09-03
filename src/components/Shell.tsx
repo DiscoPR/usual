@@ -22,7 +22,7 @@ export function Shell({
   const ready =
     status ??
     (onLibrary
-      ? "Library open. Inbox on top."
+      ? "Library open."
       : pathname.startsWith("/trip/")
         ? "Transfer window. Crawl, then Approve & send."
         : "Search ready. Type any town.");
