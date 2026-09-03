@@ -47,19 +47,21 @@ export function Trip() {
       .finally(() => setBusy(null));
   }, [trip, crawl]);
 
-  if (!id) return <p className="text-muted">Missing trip.</p>;
+  if (!id) return <p className="empty">Missing trip.</p>;
   if (trip === undefined || matches === undefined || pages === undefined) {
-    return <p className="text-muted">Opening trip…</p>;
+    return <p className="empty">Opening trip...</p>;
   }
   if (trip === null) {
-    return <p className="text-muted">That trip is gone.</p>;
+    return <p className="empty">That trip is gone.</p>;
   }
   const resolvedId = trip._id;
   const crawling =
     trip.crawlStatus === "crawling" ||
     trip.status === "crawling" ||
     trip.status === "matching" ||
-    (trip.crawlStatus === "demo" && trip.status !== "ready" && trip.status !== "sent");
+    (trip.crawlStatus === "demo" &&
+      trip.status !== "ready" &&
+      trip.status !== "sent");
 
   async function onCrawl() {
     setBusy("crawl");
@@ -69,7 +71,9 @@ export function Trip() {
       if (result.demo) {
         setNotice("Labeled demo crawl. Matches arrived page by page.");
       } else if (result.missingKey) {
-        setNotice("FIRECRAWL_API_KEY is missing. No labeled demo for this city.");
+        setNotice(
+          "FIRECRAWL_API_KEY is missing. No labeled demo for this city.",
+        );
       } else {
         setNotice(
           `Crawled ${result.crawled} page(s), skipped ${result.skipped}.`,
@@ -104,221 +108,223 @@ export function Trip() {
     setBusy(null);
   }
 
-  const outbound = (thread ?? []).filter(
-    (row) => row.direction === "outbound",
-  );
+  const outbound = (thread ?? []).filter((row) => row.direction === "outbound");
+  const hits = matches.filter((match) => !match.isMiss);
+  const misses = matches.filter((match) => match.isMiss);
 
   return (
-    <section className="space-y-6">
-      <p>
-        <Link to="/trips" className="text-accent underline">
-          All trips
+    <>
+      <div className="trip-top">
+        <Link to="/trips" className="btn-win">
+          « Search
         </Link>
-      </p>
-      <div>
-        <h1 className="font-serif text-3xl">{trip.city}</h1>
-        <p className="text-muted">{trip.dateLabel}</p>
-        {trip.matchNote ? (
-          <p className="mt-3 border border-line bg-white/60 px-3 py-3 text-sm">
-            {trip.matchNote}
-          </p>
-        ) : null}
-        {trip.crawlError ? (
-          <p className="mt-3 text-sm text-accent">{trip.crawlError}</p>
-        ) : null}
+        <h1 className="trip-title">{trip.city}</h1>
+        <span className="badge">{trip.dateLabel}</span>
+        <span className="badge">{trip.status}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      {trip.matchNote ? (
+        <section className="pane">
+          <p className="pane-pad">{trip.matchNote}</p>
+        </section>
+      ) : null}
+      {trip.crawlError ? <p className="err">{trip.crawlError}</p> : null}
+
+      <div className="xfer-row">
         <button
           type="button"
-          className="bg-ink px-4 py-3 text-paper disabled:opacity-50"
+          className="btn-go"
           disabled={busy !== null || crawling}
           onClick={() => void onCrawl()}
         >
-          {busy === "crawl" || crawling
-            ? "Crawling…"
-            : "Crawl city lists"}
+          {busy === "crawl" || crawling ? "Crawling..." : "Crawl city lists"}
         </button>
-        <p className="text-xs uppercase tracking-wide text-muted">
-          Firecrawl search · scrape returned URLs · pages land live
-        </p>
         <button
           type="button"
-          className="border border-ink px-4 py-3 disabled:opacity-50"
+          className="btn-win"
           disabled={busy !== null}
           onClick={() => void onDraft()}
         >
           Draft email
         </button>
       </div>
-      {notice ? <p className="text-sm">{notice}</p> : null}
+      <p className="hint">
+        Firecrawl search · scrape returned URLs · pages land live
+      </p>
+      {notice ? <p className="ok">{notice}</p> : null}
 
-      <div>
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-xl">Matches</h2>
-          <span className="text-xs uppercase tracking-wide text-muted">
-            OpenAI · hide below 7
+      <section className="pane">
+        <div className="section-head">
+          Download / matches
+          <span className="count">
+            {hits.length} hits · hide below 7
           </span>
         </div>
-        {matches.length === 0 ? (
-          <p className="mt-2 border border-line px-4 py-5 text-muted">
+        {hits.length === 0 ? (
+          <p className="empty">
             {crawling
-              ? "Waiting on the first page…"
+              ? "Waiting on the first page..."
               : "No matches yet. Search public lists for this town."}
           </p>
         ) : (
-          <ol className="mt-3 space-y-3">
-            {matches.map((match) =>
-              match.isMiss ? (
-                <li
-                  key={match._id}
-                  className="border border-accent/40 bg-white/70 px-4 py-4"
-                >
-                  <p className="text-xs uppercase tracking-wide text-accent">
-                    Explicit miss
-                  </p>
-                  <p className="mt-1 text-lg font-medium">{match.name}</p>
-                  <p className="mt-2">{match.whyLine}</p>
-                </li>
-              ) : (
-                <li
-                  key={match._id}
-                  className="border border-line bg-white/70 px-4 py-4"
-                >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-lg font-medium">{match.name}</p>
-                    <p className="text-sm font-medium">{match.score}/10</p>
-                  </div>
-                  <p className="text-sm text-muted">{match.neighborhood}</p>
-                  <p className="mt-2 text-sm">
-                    Matched: {match.homePlaceName}
-                    {match.vibeTag ? ` · ${match.vibeTag}` : ""}
-                  </p>
-                  <p className="mt-2">{match.whyLine}</p>
-                  {match.quote ? (
-                    <blockquote className="mt-2 border-l-2 border-line pl-3 text-sm text-muted">
-                      “{match.quote}”
-                    </blockquote>
-                  ) : null}
-                  {match.sourceUrl ? (
+          <div className="lib">
+            <div className="lib-head">
+              <span>Filename</span>
+              <span>Type</span>
+              <span>Host</span>
+              <span>Bitrate</span>
+            </div>
+            {hits.map((match) => (
+              <div key={match._id} className="lib-row">
+                <span className="lib-name">{match.name}</span>
+                <span>{match.score}/10</span>
+                <span>{match.neighborhood || trip.city}</span>
+                <span>{match.source === "demo" ? "demo" : "crawl"}</span>
+                <span className="lib-why">
+                  Matched: {match.homePlaceName}
+                  {match.vibeTag ? ` · ${match.vibeTag}` : ""}
+                </span>
+                <span className="lib-why">{match.whyLine}</span>
+                {match.quote ? (
+                  <span className="lib-quote">"{match.quote}"</span>
+                ) : null}
+                {match.sourceUrl ? (
+                  <span className="lib-skip">
                     <a
                       href={match.sourceUrl}
-                      className="mt-2 inline-block text-sm text-accent underline break-all"
                       target="_blank"
                       rel="noreferrer"
                     >
                       {match.sourceUrl}
                     </a>
-                  ) : null}
-                  <p className="mt-2 text-xs uppercase tracking-wide text-muted">
-                    {match.source === "demo" ? "demo · " : "crawled · "}
-                    matched
-                  </p>
-                </li>
-              ),
-            )}
-          </ol>
-        )}
-      </div>
-
-      <div>
-        <h2 className="font-serif text-xl">Crawled pages</h2>
-        {pages.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">
-            {crawling ? "First page in flight…" : "Nothing crawled yet."}
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {pages.map((page) => (
-              <li key={page._id} className="border border-line px-4 py-3">
-                <p className="font-medium">{page.label}</p>
-                <p className="text-xs text-muted break-all">{page.url}</p>
-                <p className="mt-1 text-sm">
-                  {page.status}
-                  {page.skipReason ? ` — ${page.skipReason}` : ""}
-                </p>
-                {page.excerpt ? (
-                  <p className="mt-2 line-clamp-4 text-sm text-muted">
-                    {page.excerpt}
-                  </p>
+                  </span>
                 ) : null}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-      </div>
+      </section>
 
-      <div className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-xl">Approve & send</h2>
-          <span className="text-xs uppercase tracking-wide text-muted">
-            AgentMail
-          </span>
+      {misses.length > 0 ? (
+        <section className="pane">
+          <div className="section-head">
+            Unavailable
+            <span className="count">{misses.length} miss</span>
+          </div>
+          {misses.map((match) => (
+            <p key={match._id} className="miss-line">
+              <strong>{match.name}.</strong> {match.whyLine}
+            </p>
+          ))}
+        </section>
+      ) : null}
+
+      <section className="pane">
+        <div className="section-head">
+          Hosts / crawl
+          <span className="count">{pages.length}</span>
         </div>
-        <p className="text-sm font-medium">
-          {trip.emailSubject ?? "Draft the list first."}
-        </p>
-        <textarea
-          className="w-full border border-line bg-white px-3 py-2"
-          rows={10}
-          value={trip.emailDraft ?? ""}
-          onChange={(event) =>
-            void saveDraft({
-              tripId: resolvedId,
-              emailSubject: trip.emailSubject ?? `Your usual, in ${trip.city}`,
-              emailDraft: event.target.value,
-            })
-          }
-          placeholder="Draft the trip list first."
-        />
-        {keys?.agentmail ? (
-          <label className="block">
-            <span className="mb-1 block text-sm text-muted">Send to</span>
-            <input
-              className="w-full border border-line bg-white px-3 py-2"
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-              placeholder="traveler inbox"
-              autoComplete="off"
-            />
-          </label>
-        ) : (
-          <p className="text-sm text-muted">
-            AgentMail is not connected. Approve still writes the outbound here.
-            Nothing leaves the machine.
+        {pages.length === 0 ? (
+          <p className="empty">
+            {crawling ? "First page in flight..." : "Nothing crawled yet."}
           </p>
+        ) : (
+          <div className="lib">
+            <div className="lib-head">
+              <span>Filename</span>
+              <span>Type</span>
+              <span>Host</span>
+              <span>Bitrate</span>
+            </div>
+            {pages.map((page) => (
+              <div
+                key={page._id}
+                className={`lib-row${page.skipReason ? " lib-row-miss" : ""}`}
+              >
+                <span className="lib-name">{page.label}</span>
+                <span>{page.status}</span>
+                <span>{page.url}</span>
+                <span>{page.skipReason ? "skip" : "ok"}</span>
+                {page.skipReason ? (
+                  <span className="lib-skip">{page.skipReason}</span>
+                ) : null}
+                {page.excerpt ? (
+                  <span className="lib-quote">{page.excerpt}</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
         )}
-        <button
-          type="button"
-          className="w-full bg-accent px-4 py-3 text-paper disabled:opacity-50"
-          disabled={busy !== null || !trip.emailDraft || trip.status === "sent"}
-          onClick={() => void onSend()}
-        >
-          {busy === "send"
-            ? "Sending…"
-            : trip.status === "sent"
-              ? "Sent"
-              : "Approve & send"}
-        </button>
-      </div>
+      </section>
+
+      <section className="pane">
+        <div className="section-head">
+          Approve & send
+          <span className="count">AgentMail</span>
+        </div>
+        <div className="form-stack">
+          <p className="hint">{trip.emailSubject ?? "Draft the list first."}</p>
+          <textarea
+            className="field"
+            rows={10}
+            value={trip.emailDraft ?? ""}
+            onChange={(event) =>
+              void saveDraft({
+                tripId: resolvedId,
+                emailSubject:
+                  trip.emailSubject ?? `Your usual, in ${trip.city}`,
+                emailDraft: event.target.value,
+              })
+            }
+            placeholder="Draft the trip list first."
+          />
+          {keys?.agentmail ? (
+            <label>
+              <span>Send to</span>
+              <input
+                className="field"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                placeholder="traveler inbox"
+                autoComplete="off"
+              />
+            </label>
+          ) : (
+            <p className="hint">
+              AgentMail is not connected. Approve still writes the outbound
+              here. Nothing leaves the machine.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn-go"
+            disabled={busy !== null || !trip.emailDraft || trip.status === "sent"}
+            onClick={() => void onSend()}
+          >
+            {busy === "send"
+              ? "Sending..."
+              : trip.status === "sent"
+                ? "Sent"
+                : "Approve & send"}
+          </button>
+        </div>
+      </section>
 
       {outbound.length > 0 ? (
-        <div className="space-y-3">
-          <h2 className="font-serif text-xl">Outbound</h2>
+        <section className="pane">
+          <div className="section-head">Outbound</div>
           {outbound.map((row) => (
-            <article
-              key={row._id}
-              className="border border-line bg-white/80 px-4 py-4"
-            >
-              <p className="text-xs uppercase tracking-wide text-muted">
+            <article key={row._id}>
+              <p className="inbox-from">
                 {row.status === "simulated" ? "demo send" : row.status}
+                <br />
+                {row.subject}
               </p>
-              <p className="mt-1 font-medium">{row.subject}</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{row.body}</p>
+              <p className="inbox-body">{row.body}</p>
             </article>
           ))}
-        </div>
+        </section>
       ) : null}
-    </section>
+    </>
   );
 }

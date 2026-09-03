@@ -61,169 +61,157 @@ export function Taste({ profileId }: { profileId: Id<"profiles"> }) {
   }
 
   if (places === undefined) {
-    return <p className="text-muted">Loading your usuals…</p>;
+    return <p className="empty">Loading your usuals...</p>;
   }
 
   return (
-    <section className="space-y-8">
+    <>
       <InboxCard />
 
-      <div>
-        <h1 className="font-serif text-2xl">Your usuals</h1>
-        <p className="mt-1 text-muted">
-          Five home spots. The why line is the taste. Usual will look for the
-          same kind of place in the city you land in — not a tourist list.
+      <section className="pane">
+        <div className="section-head">
+          Your usuals
+          <span className="count">{places.length} files</span>
+        </div>
+        <p className="pane-note pane-pad">
+          Five home spots. The why line is the taste. Usual looks for the same
+          kind of place in the city you land in, not a tourist list.
         </p>
         {profile && profile.categories.length > 0 ? (
-          <p className="mt-3 text-sm text-muted">
+          <p className="pane-note pane-pad">
             Profile: {profile.categories.join(" · ")}
             {profile.vibeTags.length > 0
-              ? ` — ${profile.vibeTags.join(", ")}`
+              ? ` / ${profile.vibeTags.join(", ")}`
               : ""}
             {profile.priceBand ? ` · ${profile.priceBand}` : ""}
           </p>
         ) : null}
-      </div>
-
-      {places.length === 0 ? (
-        <p className="border border-line bg-white/50 px-4 py-5 text-muted">
-          No places yet. Add a diner, a bar, a counter.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {places.map((place) => (
-            <li
-              key={place._id}
-              className="border border-line bg-white/70 px-4 py-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-medium">{place.name}</p>
-                  <p className="text-sm text-muted">{place.city}</p>
-                  <p className="mt-2 text-base">{place.note}</p>
-                  <p className="mt-2 text-xs uppercase tracking-wide text-muted">
-                    {place.categories.join(" · ")}
-                    {place.priceBand ? ` · ${place.priceBand}` : ""}
-                    {place.vibeTags.length > 0
-                      ? ` — ${place.vibeTags.join(", ")}`
-                      : ""}
-                  </p>
-                  {place.url ? (
-                    <a
-                      href={place.url}
-                      className="mt-2 inline-block text-sm text-accent underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Source URL
+        {places.length === 0 ? (
+          <p className="empty">No places yet. Add a diner, a bar, a counter.</p>
+        ) : (
+          <div className="lib">
+            <div className="lib-head">
+              <span>Filename</span>
+              <span>Type</span>
+              <span>Host</span>
+              <span>Bitrate</span>
+            </div>
+            {places.map((place) => (
+              <div key={place._id} className="lib-row">
+                <span className="lib-name">{place.name}</span>
+                <span>{place.categories.join(", ") || "file"}</span>
+                <span>{place.city}</span>
+                <span>{place.source === "seed" ? "seed" : place.source}</span>
+                <span className="lib-why">{place.note}</span>
+                {place.vibeTags.length > 0 || place.priceBand ? (
+                  <span className="lib-skip">
+                    {place.priceBand ? `${place.priceBand} · ` : ""}
+                    {place.vibeTags.join(", ")}
+                  </span>
+                ) : null}
+                {place.url ? (
+                  <span className="lib-skip">
+                    <a href={place.url} target="_blank" rel="noreferrer">
+                      {place.url}
                     </a>
-                  ) : null}
-                  {place.source === "seed" ? (
-                    <p className="mt-2 text-xs uppercase tracking-wide text-muted">
-                      Demo seed
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {place.url ? (
+                    {"  "}
                     <button
                       type="button"
-                      className="text-sm text-accent underline"
+                      className="reset-link"
                       disabled={enriching === place._id}
                       onClick={() => void onEnrich(place._id)}
                     >
-                      {enriching === place._id ? "Enriching…" : "Enrich"}
+                      {enriching === place._id ? "Enriching..." : "Enrich"}
                     </button>
-                  ) : null}
-                  {place.source !== "seed" ? (
+                  </span>
+                ) : null}
+                {place.source !== "seed" ? (
+                  <span className="lib-skip">
                     <button
                       type="button"
-                      className="text-sm text-accent underline"
+                      className="reset-link"
                       onClick={() => void remove({ placeId: place._id })}
                     >
                       Remove
                     </button>
-                  ) : null}
-                </div>
+                  </span>
+                ) : null}
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
 
-      <form onSubmit={(event) => void onAdd(event)} className="space-y-3">
-        <h2 className="font-serif text-xl">Add one</h2>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">Name</span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="The place you keep going back to"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">City</span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">Why, in one line</span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Counter stool. No rush."
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">
-            URL (optional — enrich from the page)
-          </span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://"
-          />
-        </label>
-        {error ? <p className="text-accent">{error}</p> : null}
-        <button type="submit" className="w-full bg-ink px-4 py-3 text-paper">
-          Save place
-        </button>
-      </form>
+      <section className="pane">
+        <div className="section-head">Share / add a place</div>
+        <form onSubmit={(event) => void onAdd(event)} className="form-stack">
+          <label>
+            <span>Name</span>
+            <input
+              className="field"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="The place you keep going back to"
+            />
+          </label>
+          <label>
+            <span>City</span>
+            <input
+              className="field"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Why, in one line</span>
+            <input
+              className="field"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Counter stool. No rush."
+            />
+          </label>
+          <label>
+            <span>URL (optional, enrich from the page)</span>
+            <input
+              className="field"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://"
+            />
+          </label>
+          {error ? <p className="err">{error}</p> : null}
+          <button type="submit" className="btn-win">
+            Save place
+          </button>
+        </form>
+      </section>
 
-      <div className="space-y-3">
-        <h2 className="font-serif text-xl">CSV import</h2>
-        <p className="text-sm text-muted">
-          Columns: name, city, note, optional url. No Google Takeout.
-        </p>
-        <textarea
-          className="w-full border border-line bg-white px-3 py-2"
-          rows={4}
-          value={csv}
-          onChange={(event) => setCsv(event.target.value)}
-          placeholder={"Lester’s Diner,Fort Lauderdale,24/7 booth"}
-        />
-        <button
-          type="button"
-          className="w-full border border-ink px-4 py-3"
-          onClick={() => void onCsv()}
-        >
-          Import CSV
-        </button>
-      </div>
-
-      <button
-        type="button"
-        className="text-sm text-muted underline"
-        onClick={() => void resetDemo()}
-      >
-        Reset demo seed
-      </button>
-    </section>
+      <section className="pane">
+        <div className="section-head">Import / CSV</div>
+        <div className="form-stack">
+          <p className="hint">
+            Columns: name, city, note, optional url. No Google Takeout.
+          </p>
+          <textarea
+            className="field"
+            rows={4}
+            value={csv}
+            onChange={(event) => setCsv(event.target.value)}
+            placeholder={"Lester's Diner,Fort Lauderdale,24/7 booth"}
+          />
+          <button type="button" className="btn-win" onClick={() => void onCsv()}>
+            Import CSV
+          </button>
+          <button
+            type="button"
+            className="reset-link"
+            onClick={() => void resetDemo()}
+          >
+            Reset demo seed
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect } from "react";
 import { api } from "../convex/_generated/api";
-import { Shell } from "./components/Shell";
+import { BootWindow, Shell } from "./components/Shell";
 import { Board } from "./pages/Board";
 import { Taste } from "./pages/Taste";
 import { Trip } from "./pages/Trip";
@@ -17,19 +17,16 @@ export default function App() {
 
   if (profile === undefined) {
     return (
-      <main className="mx-auto max-w-md px-5 py-16">
-        <p className="font-serif text-3xl">Usual</p>
-        <p className="mt-3 text-muted">Loading the board…</p>
-      </main>
+      <BootWindow message="Opening the library..." status="Connecting..." />
     );
   }
 
   if (profile === null) {
     return (
-      <main className="mx-auto max-w-md px-5 py-16">
-        <p className="font-serif text-3xl">Usual</p>
-        <p className="mt-3 text-muted">Seeding the Fort Lauderdale demo…</p>
-      </main>
+      <BootWindow
+        message="Seeding the library..."
+        status="Writing Fort Lauderdale files..."
+      />
     );
   }
 

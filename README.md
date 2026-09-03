@@ -4,6 +4,8 @@ Your usual, in this city.
 
 Usual keeps a short list of home-city places you already love, crawls a few public lists in the city you are visiting, and drafts an email of grounded matches. Sending is an explicit tap. Nothing goes out on its own.
 
+The board is skinned as Napster circa 2000: dark gray window chrome, olive accents, beveled buttons, a library list, and a status bar. The product loop is unchanged.
+
 Contest demo seed (Fort Lauderdale → Austin this weekend):
 
 - Taste: Lester’s Diner, Padrino’s Cuban Cuisine, Elbo Room, BREW Urban Cafe, Island Water Sports
@@ -70,7 +72,7 @@ AgentMail webhook path: `https://elated-perch-355.convex.site/agentmail/webhook`
 
 ## Matching method
 
-1. **Taste card** — name, city, optional URL, one-line why. Why (or a Firecrawl of the URL) fills `categories[]`, `vibeTags[]`, `priceBand`. The profile is the rollup of 5–12 anchors.
+1. **Taste row** - name, city, optional URL, one-line why. Why (or a Firecrawl of the URL) fills `categories[]`, `vibeTags[]`, `priceBand`. The profile is the rollup of 5–12 anchors.
 2. **City crawl** — Firecrawl search for public dining/bar/coffee lists in the typed town. Only URLs the search returned are scraped (optional hardcoded boosts merge and dedupe). Candidates come from markdown only, each with a source URL and a quoted snippet. Names not in the crawl text are dropped. If search and boosts are empty: `No public lists found for {city}`.
 3. **Match** — hard filter: candidate category must overlap an anchor category. A Convex action scores each remaining pair 1–10 (OpenAI, or a rule score if no model). Quote must come from the snippet. Why line: `you liked {anchor} because {tag} → {candidate} because {tag} — "{quote}"`. Best score per candidate. Hide below 7. Results upsert as each page finishes so the board moves live. Invented venues are never shown. An anchor with no grounded candidate is an explicit miss.
 

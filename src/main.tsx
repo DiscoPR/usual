@@ -27,13 +27,19 @@ createRoot(document.getElementById("root")!).render(
         </BrowserRouter>
       </ConvexProvider>
     ) : (
-      <main className="mx-auto max-w-md px-5 py-16">
-        <p className="font-serif text-3xl">Usual</p>
-        <p className="mt-3 text-muted">
-          Convex URL is missing. Run <code>npx convex dev</code> and restart
-          the Vite server.
-        </p>
-      </main>
+      <div className="desk">
+        <div className="win">
+          <div className="titlebar">
+            <span className="titlebar-text">Usual - Library</span>
+          </div>
+          <div className="win-body">
+            <p className="empty">
+              Convex URL is missing. Run <code>npx convex dev</code> and restart
+              the Vite server.
+            </p>
+          </div>
+        </div>
+      </div>
     )}
   </StrictMode>,
 );

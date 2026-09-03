@@ -16,7 +16,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const [inbound, setInbound] = useState("Hoboken, nj this weekend");
 
   if (trips === undefined) {
-    return <p className="text-muted">Loading trips…</p>;
+    return <p className="empty">Loading search...</p>;
   }
 
   async function onCreate(event: React.FormEvent) {
@@ -31,93 +31,103 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   }
 
   return (
-    <section className="space-y-8">
+    <>
       <InboxCard />
 
-      <div>
-        <h1 className="font-serif text-2xl">Trips</h1>
-        <p className="mt-1 text-muted">
-          Type any town. Usual searches public dining lists for that city,
-          then scores them against your usuals. Hide below 7. Never invents a
-          venue.
+      <section className="pane">
+        <div className="section-head">
+          Search
+          <span className="count">any town</span>
+        </div>
+        <p className="pane-note pane-pad">
+          Type any town. Usual searches public dining lists for that city, then
+          scores them against your usuals. Hide below 7. Never invents a venue.
         </p>
-      </div>
+        <form onSubmit={(event) => void onCreate(event)} className="form-stack">
+          <label>
+            <span>Town</span>
+            <input
+              className="field"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="Hoboken, nj"
+            />
+          </label>
+          <label>
+            <span>When</span>
+            <input
+              className="field"
+              value={dateLabel}
+              onChange={(event) => setDateLabel(event.target.value)}
+              placeholder="this weekend"
+            />
+          </label>
+          <button type="submit" className="btn-go">
+            Search
+          </button>
+        </form>
+      </section>
 
-      {trips.length === 0 ? (
-        <p className="border border-line bg-white/50 px-4 py-5 text-muted">
-          No trips yet. Open the inbox on Taste.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {trips.map((trip) => (
-            <li key={trip._id}>
-              <Link
-                to={`/trip/${trip._id}`}
-                className="block border border-line bg-white/70 px-4 py-4"
-              >
-                <p className="text-xl font-medium">{trip.city}</p>
-                <p className="text-muted">{trip.dateLabel}</p>
-                <p className="mt-2 text-sm">
-                  {trip.matchCount} matches · {labelStatus(trip.crawlStatus)}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <form onSubmit={(event) => void onCreate(event)} className="space-y-3">
-        <h2 className="font-serif text-xl">New trip</h2>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">Town</span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-            placeholder="Hoboken, nj"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm text-muted">When</span>
-          <input
-            className="w-full border border-line bg-white px-3 py-2"
-            value={dateLabel}
-            onChange={(event) => setDateLabel(event.target.value)}
-            placeholder="this weekend"
-          />
-        </label>
-        <button type="submit" className="w-full bg-ink px-4 py-3 text-paper">
-          Open trip
-        </button>
-      </form>
-
-      <div className="space-y-3 border-t border-line pt-6">
-        <h2 className="font-serif text-xl">Email a trip</h2>
-        {keys && !keys.agentmail ? (
-          <p className="text-sm text-muted">
-            AgentMail is not connected. This writes the same trip record a
-            webhook would.
-          </p>
+      <section className="pane">
+        <div className="section-head">
+          Results
+          <span className="count">{trips.length}</span>
+        </div>
+        {trips.length === 0 ? (
+          <p className="empty">No results yet. Open the inbox on Library.</p>
         ) : (
-          <p className="text-sm text-muted">
-            Inbox is connected. You can still simulate from here.
-          </p>
+          <div className="lib">
+            <div className="lib-head">
+              <span>Filename</span>
+              <span>Type</span>
+              <span>Host</span>
+              <span>Bitrate</span>
+            </div>
+            {trips.map((trip) => (
+              <Link
+                key={trip._id}
+                to={`/trip/${trip._id}`}
+                className="lib-row"
+              >
+                <span className="lib-name">{trip.city}</span>
+                <span>{labelStatus(trip.crawlStatus)}</span>
+                <span>{trip.dateLabel}</span>
+                <span>{trip.matchCount}</span>
+              </Link>
+            ))}
+          </div>
         )}
-        <input
-          className="w-full border border-line bg-white px-3 py-2"
-          value={inbound}
-          onChange={(event) => setInbound(event.target.value)}
-          placeholder="Hoboken, nj this weekend"
-        />
-        <button
-          type="button"
-          className="w-full border border-ink px-4 py-3"
-          onClick={() => void onSimulate()}
-        >
-          Simulate inbound email
-        </button>
-      </div>
-    </section>
+      </section>
+
+      <section className="pane">
+        <div className="section-head">Email a trip</div>
+        <div className="form-stack">
+          {keys && !keys.agentmail ? (
+            <p className="hint">
+              AgentMail is not connected. This writes the same trip record a
+              webhook would.
+            </p>
+          ) : (
+            <p className="hint">
+              Inbox is connected. You can still simulate from here.
+            </p>
+          )}
+          <input
+            className="field"
+            value={inbound}
+            onChange={(event) => setInbound(event.target.value)}
+            placeholder="Hoboken, nj this weekend"
+          />
+          <button
+            type="button"
+            className="btn-win"
+            onClick={() => void onSimulate()}
+          >
+            Simulate inbound email
+          </button>
+        </div>
+      </section>
+    </>
   );
 }
 
