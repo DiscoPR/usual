@@ -10,6 +10,7 @@
 
 import type * as crawl from "../crawl.js";
 import type * as crawls from "../crawls.js";
+import type * as draftEmail from "../draftEmail.js";
 import type * as enrich from "../enrich.js";
 import type * as http from "../http.js";
 import type * as intake from "../intake.js";
@@ -33,6 +34,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   crawl: typeof crawl;
   crawls: typeof crawls;
+  draftEmail: typeof draftEmail;
   enrich: typeof enrich;
   http: typeof http;
   intake: typeof intake;

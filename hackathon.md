@@ -2,7 +2,7 @@
 
 - **Project:** Usual
 - **Event:** Convex All Gas Hackathon (OpenAI, Firecrawl, AgentMail)
-- **What it does:** Finds your usual spots in a city you are about to visit — taste list, public-list crawl, grounded matches, owner-approved email.
+- **What it does:** Email a city. Get your usuals there, grounded, or an honest miss.
 - **Live app:** https://elated-perch-355.convex.site
 - **Repo:** none
 - **Frontend:** Convex static hosting
@@ -12,7 +12,18 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-03T00:50:00Z
+- **Last updated:** 2026-09-16T21:17:00Z
+
+## Sponsor map
+
+| Sponsor | Job in Usual |
+| --- | --- |
+| Convex | Board, trip state, matches, realtime crawl cards, hosting on `*.convex.site` |
+| AgentMail | Trip inbox plus Approve & send |
+| Firecrawl | Public city lists. Source URL and quote on each match card |
+| OpenAI | Taste match (`openai/gpt-4o-mini`) |
+
+Public GitHub is still required at All Gas submit. This Origin tree is not a substitute. Do not invent a GitHub URL.
 
 ## Log
 
@@ -51,3 +62,6 @@ Trip intake plus three grounded tiers. Who / occasion / multi-select likes / wea
 
 ### 2026-09-03 - 4d2b816
 File / View / Search / Transfer / Help are real Napster menus. File opens new trip, CSV import, usuals export, and reset demo. View browses your usuals, saved city lists, and other people's public list pages (real Eater / Visit / Time Out URLs, no invented venues). Search still lands on any-town crawl. Transfer copies or queues a list to a friend nick without sending email. Help is an in-app dialog for usuals, intake, crawl, then Top / Middle / Maybe. Redeployed to elated-perch-355. GET https://elated-perch-355.convex.site returns title `Usual - Library` and bundle `index-D6QjmiVv.js` / `index-CfaM05lg.css`. Served JS includes `Export usuals`, `Public libraries`, `Queue transfer`, and `How to use Usual`. Same Hackathon project. Did not print or commit secrets.
+
+### 2026-09-16 - f0b7533
+P0 film-path fixes on the same Hackathon / Vital 5 / elated-perch-355 development deployment. Approve & send no longer stays grey on a trip with grounded matches: crawl drafts the list, empty drafts self-heal, Send to is optional, AgentMail sends when `AGENTMAIL_API_KEY` plus `AGENTMAIL_INBOX_ID` (and a recipient or `AGENTMAIL_DEFAULT_TO`) are set, and a missing key still writes in-app outbound. Austin list pages are pinned first. Thin or empty live Austin crawls fall back to labeled demo pages (real public lists, nothing invented) and still record the Island Water Sports miss. Hoboken is off the filmed Search default. Match cards always show `Firecrawl quote` plus source URL (`convex/mail.ts`, `convex/crawl.ts`, `convex/sources.ts`, `convex/draftEmail.ts`, `src/pages/Trip.tsx`). Redeployed functions and static hosting without `--prod`. GET https://elated-perch-355.convex.site returns title `Usual - Library` and bundle `index-HI7m9G_W.js` / `index-CH_MXLfq.css`. Served JS includes `Firecrawl quote:`, `Send again`, `Hoboken is off the filmed path`, and `Austin, tx`. It does not include the previous bundle `index-D6QjmiVv.js` (that path now 404s). Did not create a new project. Did not print or commit secrets. Public GitHub still required at submit; repo field stays `none`.
