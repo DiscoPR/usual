@@ -495,19 +495,43 @@ button.lib-row {
 
 .lib-why,
 .lib-quote,
-.lib-skip {
+.lib-skip,
+.lib-cite {
   grid-column: 1 / -1;
   white-space: normal;
+  overflow: visible;
   border-right: none;
   border-top: 1px dotted #d0d0d0;
   color: inherit;
   font-weight: 400;
 }
 
+.lib-cite {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #eef2e4;
+}
+
+.lib-cite-quote,
+.lib-cite-url {
+  display: block;
+  padding: 0;
+  border: none;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
+}
+
 .lib-row:hover .lib-why,
 .lib-row:hover .lib-quote,
-.lib-row:hover .lib-skip {
+.lib-row:hover .lib-skip,
+.lib-row:hover .lib-cite {
   border-top-color: #6b8e23;
+}
+
+.lib-row:hover .lib-cite {
+  background: #2f4a1c;
 }
 
 .empty {

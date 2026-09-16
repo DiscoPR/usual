@@ -10,6 +10,7 @@ import { messageDirection, messageStatus } from "./schema";
 import { DEMO_SLUG } from "./seedData";
 import { parseTripRequest } from "./sources";
 import { AUSTIN_EMAIL_INTAKE, tripIntakeFields } from "./intake";
+import { writeDraftFromMatches } from "./draftEmail";
 
 const agentmail = new AgentMail(components.agentmail, {
   onMessageReceived: internal.mail.onMessageReceived,
@@ -231,52 +232,82 @@ export const sendTrip = mutation({
     reason: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.tripId);
+    if (!existing) return { sent: false, reason: "Trip not found." };
+    if (!existing.emailDraft?.trim()) {
+      await writeDraftFromMatches(ctx, args.tripId);
+    }
     const trip = await ctx.db.get(args.tripId);
     if (!trip) return { sent: false, reason: "Trip not found." };
-    if (!trip.emailDraft) {
-      return { sent: false, reason: "Draft an email first." };
+    if (!trip.emailDraft?.trim()) {
+      return {
+        sent: false,
+        reason: "Crawl first. Need grounded places before send.",
+      };
     }
     const inboxId = process.env.AGENTMAIL_INBOX_ID;
     const apiKey = process.env.AGENTMAIL_API_KEY;
+    const defaultTo = (process.env.AGENTMAIL_DEFAULT_TO ?? "").trim();
     const subject = trip.emailSubject ?? `Your usual, in ${trip.city}`;
-    if (!inboxId || !apiKey) {
-      await ctx.db.insert("messages", {
-        tripId: args.tripId,
-        direction: "outbound",
-        status: "simulated",
-        subject,
-        body: trip.emailDraft,
-        fromLabel: "demo send",
-      });
-      await ctx.db.patch(args.tripId, { status: "sent" });
-      return {
-        sent: true,
-        reason:
-          "Demo send. AgentMail is not connected, so this stayed in-app. Nothing left the machine.",
-      };
+    const to = args.to?.trim() || defaultTo;
+    const mailReady = Boolean(inboxId && apiKey);
+
+    if (mailReady && to) {
+      try {
+        await agentmail.sendMessage(ctx, inboxId as string, {
+          to,
+          subject,
+          text: trip.emailDraft,
+          labels: ["usual-trip"],
+        });
+        await ctx.db.insert("messages", {
+          tripId: args.tripId,
+          direction: "outbound",
+          status: "sent",
+          subject,
+          body: trip.emailDraft,
+          fromLabel: "you",
+        });
+        await ctx.db.patch(args.tripId, { status: "sent" });
+        return { sent: true, reason: "Sent through AgentMail." };
+      } catch {
+        await ctx.db.insert("messages", {
+          tripId: args.tripId,
+          direction: "outbound",
+          status: "simulated",
+          subject,
+          body: trip.emailDraft,
+          fromLabel: "demo send",
+        });
+        await ctx.db.patch(args.tripId, { status: "sent" });
+        return {
+          sent: true,
+          reason:
+            "AgentMail send did not go out. The list is saved in Outbound so the loop still finishes. Check AGENTMAIL_INBOX_ID and AGENTMAIL_API_KEY.",
+        };
+      }
     }
-    const to = args.to?.trim();
-    if (!to) {
-      return {
-        sent: false,
-        reason: "Add a recipient before sending through AgentMail.",
-      };
-    }
-    await agentmail.sendMessage(ctx, inboxId, {
-      to,
-      subject: subject,
-      text: trip.emailDraft,
-      labels: ["usual-trip"],
-    });
+
     await ctx.db.insert("messages", {
       tripId: args.tripId,
       direction: "outbound",
-      status: "sent",
-      subject: trip.emailSubject ?? `Your usual, in ${trip.city}`,
+      status: "simulated",
+      subject,
       body: trip.emailDraft,
-      fromLabel: "you",
+      fromLabel: "demo send",
     });
     await ctx.db.patch(args.tripId, { status: "sent" });
-    return { sent: true, reason: null };
+    if (mailReady && !to) {
+      return {
+        sent: true,
+        reason:
+          "AgentMail is connected. Add a Send to address (or set AGENTMAIL_DEFAULT_TO) for a real outbound. This tap still wrote the list in-app.",
+      };
+    }
+    return {
+      sent: true,
+      reason:
+        "Demo send. AgentMail is not connected, so this stayed in-app. Nothing left the machine.",
+    };
   },
 });

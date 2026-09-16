@@ -45,7 +45,9 @@ export const integrationStatus = query({
     const firecrawlKey = process.env.FIRECRAWL_API_KEY ?? "";
     return {
       firecrawl: firecrawlKey.startsWith("fc-"),
-      agentmail: Boolean(process.env.AGENTMAIL_API_KEY),
+      agentmail: Boolean(
+        process.env.AGENTMAIL_API_KEY && process.env.AGENTMAIL_INBOX_ID,
+      ),
       openai: Boolean(process.env.OPENAI_API_KEY),
     };
   },

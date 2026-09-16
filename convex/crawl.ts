@@ -4,9 +4,12 @@ import { api, components, internal } from "./_generated/api";
 import { action, type ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import {
+  isAustinCity,
+  mergeCitySources,
   mergeSources,
+  noSourcesMessage,
   normalizeSourceUrl,
-  sourcesForCity,
+  sourceCapForCity,
   type CitySource,
 } from "./sources";
 import {
@@ -44,7 +47,7 @@ export const refreshCity = action({
 
     const firecrawlKey = process.env.FIRECRAWL_API_KEY ?? "";
     const hasKey = firecrawlKey.startsWith("fc-");
-    const austin = trip.city.trim().toLowerCase().includes("austin");
+    const austin = isAustinCity(trip.city);
 
     if (!hasKey && austin) {
       await runDemoCrawl(ctx, args.tripId);
@@ -80,16 +83,25 @@ export const refreshCity = action({
 
     const intake = intakeFromTrip(trip);
     const discovered = await discoverListPages(ctx, trip.city, intake);
-    const sources = mergeSources(discovered, sourcesForCity(trip.city)).slice(
+    const sources = mergeCitySources(trip.city, discovered).slice(
       0,
-      12,
+      sourceCapForCity(trip.city),
     );
     if (sources.length === 0) {
+      if (austin) {
+        await runDemoCrawl(ctx, args.tripId);
+        return {
+          crawled: AUSTIN_DEMO_PAGES.length,
+          skipped: 0,
+          missingKey: false,
+          demo: true,
+        };
+      }
       await ctx.runMutation(internal.trips.setCrawlState, {
         tripId: args.tripId,
         crawlStatus: "failed",
         status: "draft",
-        crawlError: `No public lists found for ${trip.city}`,
+        crawlError: noSourcesMessage(trip.city),
       });
       return { crawled: 0, skipped: 0, missingKey: false, demo: false };
     }
@@ -123,15 +135,31 @@ export const refreshCity = action({
       }
     }
 
-    if (crawled === 0) {
-      await ctx.runMutation(internal.trips.setCrawlState, {
-        tripId: args.tripId,
-        crawlStatus: "failed",
-        status: "draft",
-        crawlError: "Every source was skipped or failed. No fake success.",
-      });
-      return { crawled, skipped, missingKey: false, demo: false };
+    if (crawled === 0 || (austin && grounded < 4)) {
+      if (austin) {
+        await runDemoCrawl(ctx, args.tripId);
+        return {
+          crawled: AUSTIN_DEMO_PAGES.length,
+          skipped,
+          missingKey: false,
+          demo: true,
+        };
+      }
+      if (crawled === 0) {
+        await ctx.runMutation(internal.trips.setCrawlState, {
+          tripId: args.tripId,
+          crawlStatus: "failed",
+          status: "draft",
+          crawlError: "Every source was skipped or failed. No fake success.",
+        });
+        return { crawled, skipped, missingKey: false, demo: false };
+      }
     }
+
+    await recordAustinSurfMiss(ctx, args.tripId, trip.city, "crawl");
+    grounded = await ctx.runQuery(api.crawls.countGrounded, {
+      tripId: args.tripId,
+    });
 
     await ctx.runMutation(internal.trips.setCrawlState, {
       tripId: args.tripId,
@@ -352,19 +380,7 @@ async function runDemoCrawl(ctx: ActionCtx, tripId: Id<"trips">) {
   }
 
   await delay(900);
-  await ctx.runMutation(internal.crawls.upsertMatch, {
-    tripId,
-    name: SURF_MISS_CARD.name,
-    neighborhood: SURF_MISS_CARD.neighborhood,
-    homePlaceName: SURF_MISS_CARD.homePlaceName,
-    score: 0,
-    whyLine: SURF_MISS,
-    vibeTag: SURF_MISS_CARD.vibeTag,
-    quote: SURF_MISS,
-    source: "demo",
-    sourceUrl: null,
-    isMiss: true,
-  });
+  await recordAustinSurfMiss(ctx, tripId, "Austin", "demo");
 
   await ctx.runMutation(internal.trips.setCrawlState, {
     tripId,
@@ -375,4 +391,35 @@ async function runDemoCrawl(ctx: ActionCtx, tripId: Id<"trips">) {
       "Labeled demo. Fifteen grounded places from public list pages, in three tiers. One explicit miss (no surf shop). Nothing invented.",
   });
   await ctx.runMutation(api.trips.draftFromMatches, { tripId });
+}
+
+async function recordAustinSurfMiss(
+  ctx: ActionCtx,
+  tripId: Id<"trips">,
+  city: string,
+  source: "crawl" | "demo",
+) {
+  if (!isAustinCity(city)) return;
+  const rows = await ctx.runQuery(api.crawls.listMatches, { tripId });
+  const hasSurfTwin = rows.some((row) => {
+    if (row.isMiss) return false;
+    const hay =
+      `${row.name} ${row.vibeTag} ${row.quote} ${row.whyLine}`.toLowerCase();
+    if (/not a surf/.test(hay)) return false;
+    return /surf shop|surfboard|\bsurf\b/.test(hay);
+  });
+  if (hasSurfTwin) return;
+  await ctx.runMutation(internal.crawls.upsertMatch, {
+    tripId,
+    name: SURF_MISS_CARD.name,
+    neighborhood: SURF_MISS_CARD.neighborhood,
+    homePlaceName: SURF_MISS_CARD.homePlaceName,
+    score: 0,
+    whyLine: SURF_MISS,
+    vibeTag: SURF_MISS_CARD.vibeTag,
+    quote: SURF_MISS,
+    source,
+    sourceUrl: null,
+    isMiss: true,
+  });
 }

@@ -2,13 +2,10 @@ import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { crawlRunStatus, tripOrigin, tripStatus } from "./schema";
 import { parseTripRequest } from "./sources";
-import { AUSTIN_MATCH_ORDER } from "./seedData";
+import { writeDraftFromMatches } from "./draftEmail";
 import {
   intakeFromTrip,
   intakeValidator,
-  occasionLabel,
-  partyLabel,
-  tierFromScore,
   tripIntakeFields,
 } from "./intake";
 
@@ -184,75 +181,19 @@ export const draftFromMatches = mutation({
   args: { tripId: v.id("trips") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const trip = await ctx.db.get(args.tripId);
-    if (!trip) throw new Error("Trip not found.");
-    const matches = await ctx.db
-      .query("matches")
-      .withIndex("by_trip", (q) => q.eq("tripId", args.tripId))
-      .take(80);
-    const hits = matches
-      .filter(
-        (match) =>
-          !match.isMiss && (match.score ?? 0) >= 3 && match.whyLine,
-      )
-      .sort((a, b) => {
-        const ai = AUSTIN_MATCH_ORDER.indexOf(
-          a.name as (typeof AUSTIN_MATCH_ORDER)[number],
-        );
-        const bi = AUSTIN_MATCH_ORDER.indexOf(
-          b.name as (typeof AUSTIN_MATCH_ORDER)[number],
-        );
-        if (ai !== -1 || bi !== -1) {
-          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-        }
-        return (b.score ?? 0) - (a.score ?? 0);
-      });
-    const misses = matches.filter((match) => match.isMiss);
-    const austin = trip.city.trim().toLowerCase() === "austin";
-    const intake = intakeFromTrip(trip);
-    const subject = austin
-      ? "Your usual, in Austin"
-      : `Your usual, in ${trip.city}`;
-    const byTier = {
-      top: hits.filter((match) => tierFromScore(match.score ?? 0) === "top").slice(0, 5),
-      middle: hits.filter((match) => tierFromScore(match.score ?? 0) === "middle").slice(0, 5),
-      maybe: hits.filter((match) => tierFromScore(match.score ?? 0) === "maybe").slice(0, 5),
-    };
-    const lineFor = (match: (typeof hits)[number]) => {
-      const place =
-        match.neighborhood && match.neighborhood !== "unknown"
-          ? `${match.name} (${match.neighborhood})`
-          : match.name;
-      return `• ${place}. ${match.whyLine}`;
-    };
-    const lines = [
-      `For ${partyLabel(intake)}, ${occasionLabel(intake)}.`,
-      "",
-      "Top 5",
-      ...byTier.top.map(lineFor),
-      "",
-      "Middle 5",
-      ...byTier.middle.map(lineFor),
-      "",
-      "Maybe",
-      ...byTier.maybe.map(lineFor),
-    ];
-    const missLines = misses.map(
-      (match) => `${match.homePlaceName}. ${match.whyLine}`,
-    );
-    const body = [
-      subject,
-      "",
-      ...lines,
-      ...(missLines.length > 0 ? ["", ...missLines] : []),
-      "",
-      austin ? "No Sixth Street." : "Usual does not send this until you approve.",
-    ].join("\n");
-    await ctx.db.patch(args.tripId, {
-      emailSubject: subject,
-      emailDraft: body,
-    });
+    await writeDraftFromMatches(ctx, args.tripId);
     return null;
+  },
+});
+
+export const ensureDraft = mutation({
+  args: { tripId: v.id("trips") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip) return false;
+    if (trip.emailDraft && trip.emailDraft.trim().length > 0) return true;
+    return await writeDraftFromMatches(ctx, args.tripId);
   },
 });
 

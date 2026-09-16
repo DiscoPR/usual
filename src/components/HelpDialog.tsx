@@ -46,9 +46,10 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
               still a reason. If the crawl is thin, Usual says so.
             </li>
             <li>
-              <strong>Transfer, then Approve & send.</strong> File and Transfer
-              can copy or queue a list to a friend. Email stays a draft until
-              you tap Approve & send.
+              <strong>Approve & send.</strong> After grounded places land, the
+              list drafts itself. The button stays on. AgentMail sends when
+              keys and a Send to address are set. Otherwise the outbound stays
+              in-app so the loop still finishes.
             </li>
           </ol>
           <p className="hint">

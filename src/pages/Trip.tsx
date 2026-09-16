@@ -22,6 +22,7 @@ export function Trip() {
   const keys = useQuery(api.profile.integrationStatus);
   const crawl = useAction(api.crawl.refreshCity);
   const draft = useMutation(api.trips.draftFromMatches);
+  const ensureDraft = useMutation(api.trips.ensureDraft);
   const saveDraft = useMutation(api.trips.saveDraft);
   const saveIntake = useMutation(api.trips.saveIntake);
   const send = useMutation(api.mail.sendTrip);
@@ -80,6 +81,31 @@ export function Trip() {
     });
   }, [trip?._id]);
 
+  const groundedCount =
+    matches?.filter((match) => !match.isMiss).length ?? 0;
+
+  useEffect(() => {
+    if (!id) return;
+    if (trip?.emailDraft && trip.emailDraft.trim().length > 0) return;
+    if (groundedCount === 0) return;
+    const stillCrawling =
+      trip?.crawlStatus === "crawling" ||
+      trip?.status === "crawling" ||
+      trip?.status === "matching" ||
+      (trip?.crawlStatus === "demo" &&
+        trip.status !== "ready" &&
+        trip.status !== "sent");
+    if (stillCrawling) return;
+    void ensureDraft({ tripId: id });
+  }, [
+    id,
+    trip?.emailDraft,
+    trip?.crawlStatus,
+    trip?.status,
+    groundedCount,
+    ensureDraft,
+  ]);
+
   if (!id) return <p className="empty">Missing trip.</p>;
   if (trip === undefined || matches === undefined || pages === undefined) {
     return <p className="empty">Opening trip...</p>;
@@ -131,15 +157,23 @@ export function Trip() {
   async function onSend() {
     setBusy("send");
     setNotice(null);
-    const result = await send({
-      tripId: resolvedId,
-      to: to.trim() || undefined,
-    });
-    setNotice(
-      result.reason ??
-        (result.sent ? "Sent through AgentMail." : "Send did not go out."),
-    );
-    setBusy(null);
+    try {
+      if (!(trip?.emailDraft ?? "").trim()) {
+        await ensureDraft({ tripId: resolvedId });
+      }
+      const result = await send({
+        tripId: resolvedId,
+        to: to.trim() || undefined,
+      });
+      setNotice(
+        result.reason ??
+          (result.sent ? "Sent through AgentMail." : "Send did not go out."),
+      );
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Send failed.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   const outbound = (thread ?? []).filter((row) => row.direction === "outbound");
@@ -148,6 +182,8 @@ export function Trip() {
   const maybe = matches.filter((match) => match.tier === "maybe");
   const hits = [...top, ...middle, ...maybe];
   const misses = matches.filter((match) => match.isMiss);
+  const canApprove =
+    hits.length > 0 || Boolean(trip.emailDraft && trip.emailDraft.trim());
   const shortfall =
     hits.length < 15 && hits.length > 0
       ? `only ${hits.length} grounded places in this crawl`
@@ -285,7 +321,7 @@ export function Trip() {
           <span className="count">AgentMail</span>
         </div>
         <div className="form-stack">
-          <p className="hint">{trip.emailSubject ?? "Draft the list first."}</p>
+          <p className="hint">{trip.emailSubject ?? "Draft fills in after the crawl."}</p>
           <textarea
             className="field"
             rows={10}
@@ -298,19 +334,23 @@ export function Trip() {
                 emailDraft: event.target.value,
               })
             }
-            placeholder="Draft the trip list first."
+            placeholder="Crawl grounded places. The list drafts itself."
           />
+          <label>
+            <span>Send to</span>
+            <input
+              className="field"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              placeholder="traveler inbox"
+              autoComplete="off"
+            />
+          </label>
           {keys?.agentmail ? (
-            <label>
-              <span>Send to</span>
-              <input
-                className="field"
-                value={to}
-                onChange={(event) => setTo(event.target.value)}
-                placeholder="traveler inbox"
-                autoComplete="off"
-              />
-            </label>
+            <p className="hint">
+              AgentMail is connected. Fill Send to for a real outbound. An empty
+              Send to still writes the list in-app so the loop can finish.
+            </p>
           ) : (
             <p className="hint">
               AgentMail is not connected. Approve still writes the outbound
@@ -320,15 +360,20 @@ export function Trip() {
           <button
             type="button"
             className="btn-go"
-            disabled={busy !== null || !trip.emailDraft || trip.status === "sent"}
+            disabled={busy !== null || !canApprove}
             onClick={() => void onSend()}
           >
             {busy === "send"
               ? "Sending..."
               : trip.status === "sent"
-                ? "Sent"
+                ? "Send again"
                 : "Approve & send"}
           </button>
+          {!canApprove ? (
+            <p className="hint">
+              Crawl first. Approve & send turns on after grounded places land.
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -403,20 +448,45 @@ function TierList({
                 {match.vibeTag ? ` · ${match.vibeTag}` : ""}
               </span>
               <span className="lib-why">{match.whyLine}</span>
-              {match.quote ? (
-                <span className="lib-quote">"{match.quote}"</span>
-              ) : null}
-              {match.sourceUrl ? (
-                <span className="lib-skip">
-                  <a href={match.sourceUrl} target="_blank" rel="noreferrer">
-                    {match.sourceUrl}
-                  </a>
-                </span>
-              ) : null}
+              <MatchCite quote={match.quote} sourceUrl={match.sourceUrl} />
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+function MatchCite({
+  quote,
+  sourceUrl,
+}: {
+  quote: string;
+  sourceUrl: string | null;
+}) {
+  return (
+    <span className="lib-cite">
+      {quote ? (
+        <span className="lib-cite-quote">Firecrawl quote: "{quote}"</span>
+      ) : (
+        <span className="lib-cite-quote">
+          No quote on this card. The page did not yield a sentence.
+        </span>
+      )}
+      {sourceUrl ? (
+        <a
+          className="lib-cite-url"
+          href={sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Source: {sourceUrl}
+        </a>
+      ) : (
+        <span className="lib-cite-url">
+          No source URL on this card.
+        </span>
+      )}
+    </span>
   );
 }

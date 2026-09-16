@@ -43,6 +43,14 @@ export const PUBLIC_LIBRARIES: PublicLibrary[] = [
         label: "Visit Austin outdoors",
         url: "https://www.austintexas.org/things-to-do/outdoors/",
       },
+      {
+        label: "Time Out Austin restaurants",
+        url: "https://www.timeout.com/austin/restaurants",
+      },
+      {
+        label: "Visit Austin restaurants",
+        url: "https://www.austintexas.org/restaurants/",
+      },
     ],
   },
   {
@@ -66,7 +74,7 @@ export const PUBLIC_LIBRARIES: PublicLibrary[] = [
     nick: "HudsonHost",
     city: "Hoboken",
     title: "Hoboken public lists",
-    note: "Shared Hudson and Jersey City list pages. Search Hoboken to crawl them.",
+    note: "Shared Hudson and Jersey City list pages. Not the filmed demo city. Search Austin if this town returns no lists.",
     searchCity: "Hoboken, nj",
     lists: [
       {

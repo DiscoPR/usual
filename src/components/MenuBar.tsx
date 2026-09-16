@@ -101,7 +101,7 @@ export function MenuBar({
             onClick: () => go("/trips?city=Austin%2C%20tx"),
           },
           {
-            label: "Search Hoboken, nj",
+            label: "Search Hoboken, nj (not filmed)",
             onClick: () => go("/trips?city=Hoboken%2C%20nj"),
           },
           {

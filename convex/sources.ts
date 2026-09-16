@@ -32,6 +32,14 @@ const AUSTIN: CitySource[] = [
     url: "https://www.austintexas.org/things-to-do/outdoors/",
     label: "Visit Austin outdoors",
   },
+  {
+    url: "https://www.timeout.com/austin/restaurants",
+    label: "Time Out Austin restaurants",
+  },
+  {
+    url: "https://www.austintexas.org/restaurants/",
+    label: "Visit Austin restaurants",
+  },
 ];
 
 const LISBON: CitySource[] = [
@@ -64,8 +72,20 @@ const HOBOKEN: CitySource[] = [
   },
 ];
 
+export function cityKey(city: string): string {
+  return city.trim().toLowerCase();
+}
+
+export function isAustinCity(city: string): boolean {
+  return cityKey(city).includes("austin");
+}
+
+export function isQuarantinedCity(city: string): boolean {
+  return cityKey(city).includes("hoboken");
+}
+
 export function sourcesForCity(city: string): CitySource[] {
-  const key = city.trim().toLowerCase();
+  const key = cityKey(city);
   if (key.includes("austin")) return AUSTIN;
   if (key.includes("lisbon") || key.includes("lisboa")) return LISBON;
   if (key.includes("hoboken") || key.includes("jersey city")) return HOBOKEN;
@@ -85,6 +105,25 @@ export function mergeSources(
     merged.push({ url, label: source.label });
   }
   return merged;
+}
+
+export function mergeCitySources(
+  city: string,
+  discovered: CitySource[],
+): CitySource[] {
+  // Pin known list pages first so search noise cannot drop the filmed city.
+  return mergeSources(sourcesForCity(city), discovered);
+}
+
+export function sourceCapForCity(city: string): number {
+  return isAustinCity(city) ? 14 : 10;
+}
+
+export function noSourcesMessage(city: string): string {
+  if (isQuarantinedCity(city)) {
+    return `No verified public sources for ${city}. Hoboken is off the filmed path. Search Austin instead. Nothing invented.`;
+  }
+  return `No verified public sources for ${city}. Nothing invented. Austin is the filmed demo city.`;
 }
 
 export function normalizeSourceUrl(url: string): string {

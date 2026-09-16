@@ -14,9 +14,9 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
   const simulate = useMutation(api.mail.simulateInbound);
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [city, setCity] = useState(params.get("city") || "Hoboken, nj");
+  const [city, setCity] = useState(params.get("city") || "Austin, tx");
   const [dateLabel, setDateLabel] = useState("this weekend");
-  const [inbound, setInbound] = useState("Hoboken, nj this weekend");
+  const [inbound, setInbound] = useState("Austin this weekend");
   const [intake, setIntake] = useState<Intake>(DEFAULT_INTAKE);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
               className="field"
               value={city}
               onChange={(event) => setCity(event.target.value)}
-              placeholder="Hoboken, nj"
+              placeholder="Austin, tx"
             />
           </label>
           <label>
@@ -73,6 +73,12 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
             />
           </label>
           <IntakeForm value={intake} onChange={setIntake} />
+          {/hoboken/i.test(city) ? (
+            <p className="hint">
+              Hoboken is off the filmed path. If lists do not come back, search
+              Austin instead. Usual will not invent venues.
+            </p>
+          ) : null}
           <button type="submit" className="btn-go">
             Search
           </button>
@@ -127,7 +133,7 @@ export function Board({ profileId }: { profileId: Id<"profiles"> }) {
             className="field"
             value={inbound}
             onChange={(event) => setInbound(event.target.value)}
-            placeholder="Hoboken, nj this weekend"
+            placeholder="Austin this weekend"
           />
           <button
             type="button"
