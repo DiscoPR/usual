@@ -102,7 +102,7 @@ AgentMail webhook: `https://elated-perch-355.convex.site/agentmail/webhook`
 ## Submit notes (All Gas, due Tue Sep 22 2026 12:00 PM PT)
 
 - Live URL must stay on `*.convex.site` (this repo already uses Convex static hosting).
-- Public GitHub is required at submit. This Origin repo is not a substitute. Do not invent a GitHub URL here if none exists yet.
+- Public GitHub: https://github.com/DiscoPR/usual
 - `hackathon.md` at the repo root is the build log judges read.
 - Video demo under 3 minutes, filmed on the live URL. Recording is out of scope for this tree.
 - Submit on vibeapps.dev with tag `AllGasHackathon`. Register on Luma. Kevin owns GitHub / Luma / vibeapps / the video.
