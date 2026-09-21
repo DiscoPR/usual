@@ -104,7 +104,7 @@ AgentMail webhook: `https://elated-perch-355.convex.site/agentmail/webhook`
 - Live URL must stay on `*.convex.site` (this repo already uses Convex static hosting).
 - Public GitHub: https://github.com/DiscoPR/usual
 - `hackathon.md` at the repo root is the build log judges read.
-- Video demo under 3 minutes, filmed on the live URL. Recording is out of scope for this tree.
+- Video: https://www.loom.com/share/182e1b66a30e463a84e45c2ee886bd5b
 - Submit on vibeapps.dev with tag `AllGasHackathon`. Register on Luma. Kevin owns GitHub / Luma / vibeapps / the video.
 
 ## Out of scope

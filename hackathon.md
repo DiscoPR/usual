@@ -4,7 +4,7 @@
 - **Event:** Convex All Gas Hackathon (OpenAI, Firecrawl, AgentMail)
 - **What it does:** Email a city. Get your usuals there, grounded, or an honest miss.
 - **Live app:** https://elated-perch-355.convex.site
-- **Video:** TBD
+- **Video:** https://www.loom.com/share/182e1b66a30e463a84e45c2ee886bd5b
 - **Repo:** https://github.com/DiscoPR/usual
 - **Frontend:** Convex static hosting
 - **Convex deployment:** https://elated-perch-355.convex.cloud
@@ -13,7 +13,7 @@
 - **Auth:** none
 - **AI models:** openai/gpt-4o-mini (via Convex AI Gateway when available)
 - **Started:** 2026-09-02T00:26:00Z
-- **Last updated:** 2026-09-20T21:00:00Z
+- **Last updated:** 2026-09-21T15:24:00Z
 
 ## Sponsor map
 
@@ -24,7 +24,7 @@
 | Firecrawl | Public city lists. Source URL and quote on each match card |
 | OpenAI | Taste match (`openai/gpt-4o-mini`) |
 
-Public GitHub for All Gas submit: https://github.com/DiscoPR/usual. Video is TBD until filmed.
+Public GitHub for All Gas submit: https://github.com/DiscoPR/usual. Video: https://www.loom.com/share/182e1b66a30e463a84e45c2ee886bd5b
 
 ## Log
 
@@ -68,4 +68,7 @@ File / View / Search / Transfer / Help are real Napster menus. File opens new tr
 P0 film-path fixes on the same Hackathon / Vital 5 / elated-perch-355 development deployment. Approve & send no longer stays grey on a trip with grounded matches: crawl drafts the list, empty drafts self-heal, Send to is optional, AgentMail sends when `AGENTMAIL_API_KEY` plus `AGENTMAIL_INBOX_ID` (and a recipient or `AGENTMAIL_DEFAULT_TO`) are set, and a missing key still writes in-app outbound. Austin list pages are pinned first. Thin or empty live Austin crawls fall back to labeled demo pages (real public lists, nothing invented) and still record the Island Water Sports miss. Hoboken is off the filmed Search default. Match cards always show `Firecrawl quote` plus source URL (`convex/mail.ts`, `convex/crawl.ts`, `convex/sources.ts`, `convex/draftEmail.ts`, `src/pages/Trip.tsx`). Redeployed functions and static hosting without `--prod`. GET https://elated-perch-355.convex.site returns title `Usual - Library` and bundle `index-HI7m9G_W.js` / `index-CH_MXLfq.css`. Served JS includes `Firecrawl quote:`, `Send again`, `Hoboken is off the filmed path`, and `Austin, tx`. It does not include the previous bundle `index-D6QjmiVv.js` (that path now 404s). Did not create a new project. Did not print or commit secrets. Public GitHub still required at submit; repo field stays `none`.
 
 ### 2026-09-20 - a830108
-Published the public All Gas repo at https://github.com/DiscoPR/usual and wrote `AGENTMAIL.md` (env names only) so Kevin can reconnect AgentMail on elated-perch-355. UI "connected" still requires `AGENTMAIL_API_KEY` plus `AGENTMAIL_INBOX_ID` on that development deployment. Webhook path stays `/agentmail/webhook`. Video remains TBD. Live app unchanged: https://elated-perch-355.convex.site. Did not print or commit secrets.
+Published the public All Gas repo at https://github.com/DiscoPR/usual and wrote `AGENTMAIL.md` (env names only) so Kevin can reconnect AgentMail on elated-perch-355. UI "connected" still requires `AGENTMAIL_API_KEY` plus `AGENTMAIL_INBOX_ID` on that development deployment. Webhook path stays `/agentmail/webhook`. Video: https://www.loom.com/share/182e1b66a30e463a84e45c2ee886bd5b. Live app unchanged: https://elated-perch-355.convex.site. Did not print or commit secrets.
+
+### 2026-09-21
+Set the Video field to the filmed All Gas demo: https://www.loom.com/share/182e1b66a30e463a84e45c2ee886bd5b. No product code change.
